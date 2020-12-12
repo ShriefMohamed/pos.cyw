@@ -1,0 +1,52 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+    <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>Compute Your World</title>
+    <STYLE type="text/css">
+        body {margin-top: 0px;margin-left: 0px;}
+        #page_1 {position:relative;padding: 0px;border: none;width: 768px;}
+        .dclr {clear:both;float:none;height:1px;margin:0px;padding:0px;overflow:hidden;}
+
+        .p-top {margin: 5px 0;text-align: center; line-height: 18px}
+        .ft0{font: bold 15px 'Calibri';line-height: 8px;}
+        .ft1{font: 15px 'Calibri';line-height: 8px;}
+        .ft2{font: 15px 'Calibri';margin-left: 4px;line-height: 8px;}
+        .ft3{font: 15px 'Calibri';text-decoration: underline;color: #0563c1}
+        .ft4{color: #0563c1}
+        .p {text-align: left;}
+    </STYLE>
+</HEAD>
+
+<BODY>
+<DIV id="page_1">
+    <div style="text-align: center">
+        <img src="{{ IMAGEPATH }}top-logo.jpg" style="width:300px">
+    </div>
+    <DIV class="dclr"></DIV>
+    <P class="p-top"><SPAN class="ft0">ABN: </SPAN>26 613 878 729 <SPAN class="ft0">ACN: </SPAN>61 387 8729</P>
+    <P class="p-top">Shop 2/2 Malone Street, MORPHETT VALE SA 5162</P>
+    <P class="p-top ft4"><SPAN class="ft0">P:</SPAN><SPAN class="ft2">08 8461 9552 </SPAN><SPAN class="ft0">E: </SPAN><A href="mailto:service@computeyourworld.com.au"><SPAN class="ft3">service@computeyourworld.com.au</SPAN></A></P>
+
+    <br><br>
+    <P class="p ft1">{{ DATE }}</P>
+    <br>
+    <P class="p ft1">Dear Sir/ Madam</P>
+    <P class="p ft0">Re: Insurance Claim</P>
+
+    <P class="p ft1">Your Reference: {{ REFERENCE }}</P>
+    <P class="p ft1">Insured Client: {{ CLIENT }}</P>
+    <P class="p ft1">Phone: {{ PHONE }}</P>
+    <P class="p ft1">Make: {{ MAKE }}</P>
+
+    {{ MODEL }}
+    {{ SERIAL }}
+    {{ IMEI }}
+    <br>
+
+    {{ INFO }}
+
+    <br>
+    <P class="p ft1">Kind Regards</P>
+    <br>
+    <P class="p ft1">{{ NAME }}</P>

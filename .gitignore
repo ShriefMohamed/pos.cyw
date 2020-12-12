@@ -1,0 +1,11 @@
+app/sessions/*
+app/logs/*
+app/vendor
+
+public/job_attachments/*
+public/leader_datafeed/*
+public/quotes_docs/*
+public/quotes_po/*
+public/sales_receipts/*
+public/signatures/*
+public/test/*

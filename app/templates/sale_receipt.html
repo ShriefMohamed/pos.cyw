@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Compute Your World - Sale Receipt</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <style>
+    @page { margin: 0px; }
+    body {font: normal 10pt 'Helvetica Neue', Helvetica, Arial, sans-serif;width: auto;margin: 0 auto;padding: 1px;}
+    .store {page-break-after: always;margin-bottom: 40px;}
+    .receipt {font: normal 10pt “Helvetica Neue”, Helvetica, Arial, sans-serif;}
+    h1 {margin: .5em 0 0;font-size: 12pt;text-align: center;}
+    p.date, p.copy {font-size: 9pt;margin: 0;text-align: center;}
+    p.details {font-size: 10pt;text-align: left;}
+    h2 {border-bottom: 1px solid black;text-transform: uppercase;font-size: 10pt;margin: .5em 0 0;}
+    .receiptHeader {text-align: center;}
+    .receiptHeader h3 {font-size: 12pt;margin: 0;}
+    .shipping h4 {margin-top: 0;}
+    .receiptHeader img {margin: 8px 0 4px;}
+    .receiptShopContact {margin: 0;}
+    table {margin: 0 0;width: 100%;border-collapse:collapse;}
+    table th { text-align: left; }
+    table tbody th {font-weight: normal;text-align: left;}
+    table td.amount, table th.amount { text-align: right; }
+    table td.quantity, table th.quantity { text-align: center; }
+    th.description {width: 100%;}
+    td.amount { white-space: nowrap; }
+    table.totals { text-align: right; }
+    table.payments { text-align: right; }
+    table.spacer { margin-top: 1em; }
+    table tr.total td { font-weight: bold; }
+    table td.amount { padding-left: 10px; }
+    table td.custom_field {padding-right: 10px;text-align: center;}
+    table.sale { border-bottom: 1px solid black; }
+    table.sale th {border-bottom: 1px solid black;font-weight: bold;}
+    table div.line_description {text-align: left;font-weight: bold;}
+    table div.line_note {text-align: left;padding-left: 10px;}
+    table div.line_serial {text-align: left;font-weight: normal;padding-left: 10px;}
+    table.workorders div.line_description {font-weight: normal;padding-left: 10px;}
+    table.workorders div.line_note {font-weight: normal;padding-left: 10px;}
+    table.workorders div.line_serial {font-weight: normal;padding-left: 20px;}
+    table.workorders td.workorder div.line_note {font-weight: bold;padding-left: 0px;}
+    p.thankyou {margin: 0;text-align: center;margin-bottom: 20px}
+    .note { text-align: center; }
+    .barcodeContainer {text-align: center;}
+    .barcodeContainer img {margin-top: 15px;}
+    .barcode-number {display: block;font-size: 18px;letter-spacing: 10px;}
+    .workorders .barcodeContainer {margin-left: 15px;text-align: left;}
+    dl {overflow: hidden}
+    dl dt {font-weight: bold;width: 80px;float: left}
+    dl dd {border-top: 2px solid black;padding-top: 2px;margin: 1em 0 0;float: left;width: 180px}
+    dl dd p { margin: 0; }
+    .strike { text-decoration: line-through; }
+    .receiptCompanyNameField,
+    .receiptCustomerNameField,
+    .receiptCustomerVatField,
+    .receiptCustomerCompanyVatField,
+    .receiptCustomerAddressField,
+    .receiptPhonesContainer,
+    .receiptCustomerNoteField {display: block;}
+    table.payments td.label {font-weight: normal;text-align: right;width: 100%;}
+    #receiptTransactionDetails table {max-width: 245px;margin: 0 auto;}
+    #receiptTransactionDetails table td {text-align: right;}
+    #receiptTransactionDetails table td.top {font-weight: bold;}
+    #receiptTransactionDetails table td.label {padding-right: 20px;text-align: left;}
+</style>
+</head>
+
+<body>
+<div>
+
+    <div class="receiptHeader">
+        <h3 class="receiptShopName">Compute Your World</h3>
+        <p class="receiptShopContact">
+            Shop 2/2 Malone Street Morphett Vale<br>Adelaide,  SA 5162<br>Australia
+            <br>
+            <strong>ABN: </strong>26 613 878 729 <strong>ACN: </strong>61 387 8729
+            <br>
+            <strong>P: </strong> (08) 8461 9552
+        </p>
+    </div>
+
+    <h1 class="receiptTypeTitle">Sales Receipt</h1>
+    <p class="date" id="receiptDateTime">{{DATETIME}}</p>
+    <p id="receiptInfo" class="details">
+        <span class="receiptTicketIdField">
+            <span class="receiptTicketIdLabel">Ticket: </span>
+            <span id="receiptTicketId">{{UID}}</span>
+            <br>
+        </span>
+        <span class="receiptEmployeeNameField">
+            <span class="receiptEmployeeNameLabel">Employee: </span>
+            <span id="receiptEmployeeName">{{ADMIN}}</span>
+            <br>
+        </span>
+    </p>
+
+    <table class="sale lines">
+        <tbody>
+        <tr>
+            <th class="description">Items</th>
+            <th class="quantity">#</th>
+            <th class="amount">Price</th>
+            <th class="amount">Tax</th>
+        </tr>
+        </tbody>
+        <tbody>
+            {{ITEMS}}
+        </tbody>
+    </table>
+
+    <table class="saletotals totals">
+        <tbody id="receiptSaleTotals">
+        <tr>
+            <td width="100%">Subtotal</td>
+            <td id="receiptSaleTotalsSubtotal" class="amount">${{SUBTOTAL}}</td>
+        </tr>
+        <tr><td width="100%">Total Tax</td><td id="receiptSaleTotalsTax" class="amount">${{TAX}}</td></tr>
+        <tr><td width="100%">Discount</td><td id="receiptSaleTotalsDiscount" class="amount">${{DISCOUNT}}</td></tr>
+        <tr class="total"><td>Total</td><td id="receiptSaleTotalsTotal" class="amount">${{TOTAL}}</td></tr>
+        </tbody>
+    </table>
+
+    <h2 class="paymentTitle">Payments</h2>
+    <table id="receiptPayments" class="payments">
+        <tbody>
+        <tr><td colspan="2"></td></tr>
+        {{PAYMENTS}}
+        </tbody>
+    </table>
+
+    {{NOTES}}
+
+    <p id="receiptThankYouNote" class="thankyou">Thank You !</p>
+
+    <div class="barcodeContainer" style="width: 100%">
+        {{BARCODE}}
+    </div>
+    <div class="barcodeContainer" style="width: 100%">
+        <span class="barcode-number">{{BARCODE_NUMBER}}</span>
+    </div>
+</div>
+</body>
+</html>

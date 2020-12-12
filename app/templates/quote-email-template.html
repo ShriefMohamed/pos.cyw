@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Compute Your World - Quote</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+
+    <style>
+        body {font: normal 10pt 'Helvetica Neue', Helvetica, Arial, sans-serif;width: auto;margin: 0 auto;padding: 1px;}
+    </style>
+    <style>
+        .online-invoice-container {
+            background-color: #fff;
+            border: 1px solid #ccc;
+            -moz-box-shadow: 0 3px 8px #aaa;
+            -webkit-box-shadow: 0 3px 8px #aaa;
+            box-shadow: 0 3px 8px #aaa;
+            min-height: 400px;
+            margin-top: 20px;
+        }
+        .online-invoice {background-color: #fff;width: 100%}
+        .online-invoice .x-row.big-gap {margin-bottom: 80px;}
+        .online-invoice .big-gap {margin-bottom: 40px;}
+        .online-invoice h2 {margin-top: 10px;font-size: 24px;line-height: 36px;}
+
+        .table {width: 100%;margin-bottom: 18px;}
+        table {max-width: 100%;border-collapse: collapse;border-spacing: 0;background-color: transparent;}
+        .online-quote .x-row.details table tbody tr td:first-child {padding-left: 1px;}
+        .online-invoice .details table tbody tr td:first-child {font-weight: bold;}
+        .online-invoice .details table tbody td.label {max-width: 133px;}
+        .table th, .table td {padding: 8px;line-height: 18px;text-align: left;vertical-align: top;border-top: 1px solid #ddd;}
+        .online-invoice .details address {margin-bottom: 0;}
+        address {display: block;margin-bottom: 18px;line-height: 18px;font-style: normal;}
+        .online-invoice .details table tbody tr td:first-child {font-weight: bold;}
+
+        .x-btn, .x-menu .c-btn {
+            padding: 6px 14px;
+            text-align: center;
+            font-size: 15px;
+            line-height: 18px;
+            color: #00a3d3;
+            text-shadow: 0 1px rgba(0,0,0,0.1);
+            vertical-align: middle;
+            background-color: #f5f5f5;
+            border: 1px solid #cecece;
+            border-bottom-color: #b3b3b3;
+            -moz-border-radius: 3px;
+            -webkit-border-radius: 3px;
+            border-radius: 3px;
+            -moz-box-shadow: rgba(255,255,255,0.3) 0 0 0 1px inset;
+            -webkit-box-shadow: rgba(255,255,255,0.3) 0 0 0 1px inset;
+            box-shadow: rgba(255,255,255,0.3) 0 0 0 1px inset;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .online-invoice .line-items tfoot.summary tr:first-child td,
+        .online-invoice .line-items tfoot.summary tr.sub-total td {
+            border-width: 0;}
+        .online-invoice .line-items tfoot.summary tr td {
+            border-width: 0;text-align: right;white-space: nowrap;padding: 7px;}
+        .online-invoice .line-items tfoot.summary tr.total td {padding: 8px;}
+        .online-invoice .line-items tfoot.summary tr td {text-align: right;white-space: nowrap;}
+    </style>
+</head>
+
+<body>
+<div>
+
+
+    <div id="online-invoice-container" class="online-invoice-container" style="width 50%;margin: auto;">
+        <div class="x-border-box">
+             <div id="onlinequote-1010-innerCt" style="display:block;height:100%;vertical-align:top;">
+                <div class="online-invoice online-quote">
+                      <div class="x-row big-gap" style="padding: 40px 30px;margin-bottom: 20px;">
+                         <div class="x-span6" style="width: 100%">
+                            <h2 style="float: left">QUOTE</h2>
+                         </div>
+                      </div>
+
+                      <div class="x-row details" style="display: inline-block;width: 100%;margin-bottom: 20px;">
+                         <div class="x-span5" style="padding-left: 30px;width: 40%;display: inline-block">
+                            <table class="table">
+                               <tbody>
+                               <tr>
+                                  <td class="label">To</td>
+                                  <td class="value">
+                                     <address>
+                                        <strong>{{CUSTOMER}}</strong>
+                                     </address>
+                                  </td>
+                               </tr>
+                               <tr>
+                                   <td class="label">Address</td>
+                                   <td class="value">
+                                       <address>
+                                           <strong>{{ADDRESS}}</strong>
+                                       </address>
+                                   </td>
+                               </tr>
+                               <tr>
+                                  <td class="label">Quote Number</td>
+                                  <td class="value">{{UID}}</td>
+                               </tr>
+                               <tr>
+                                  <td class="label">Date</td>
+                                  <td class="value">{{DATE}}</td>
+                               </tr>
+                               </tbody>
+                            </table>
+                         </div>
+                         <div class="x-span5" style="padding-right: 30px; float: right;width: 40%;display: inline-block">
+                            <table class="table">
+                               <tbody>
+                               <tr>
+                                  <td class="label">From</td>
+                                  <td>
+                                     <address>
+                                        Compute Your World<br>Shop 2, 2 Malone St<br>MORPHETT VALE SA 5162<br>AUSTRALIA<br>
+                                     </address>
+                                  </td>
+                               </tr>
+                               </tbody>
+                            </table>
+                         </div>
+                      </div>
+
+                      <div class="x-row" style="position:relative;margin-bottom: 20px;">
+                         <div style="width: 100%; border-top: 1px solid #888;border-bottom: 1px solid #888;padding-top: 50px;padding-bottom: 50px;text-align: center;">
+                            <strong>Please see the attached PDF for complete details</strong>
+                            <div style="margin-top:20px;margin-left:auto;margin-right:auto;">
+                               <a class="x-btn" style="width:80px;text-decoration: none" role="button" href="{{PDF_URL}}" target="_blank" id="button-1011">
+                                  <span>View PDF</span>
+                               </a>
+                               <strong style="margin: 0 14px;">OR</strong>
+                               <a class="x-btn" style="width:80px;text-decoration: none" role="button" href="{{QUOTE_URL}}" target="_blank" id="button-1012">
+                                  <span>Preview Quote Online</span>
+                               </a>
+                            </div>
+                         </div>
+
+                         <div style="width: 100%">
+                            <table class="line-items table table-condensed" style="margin-top:2px;">
+                               <tfoot class="summary">
+                               <tr class="total">
+                                  <td width="60%"> </td>
+                                  <td class="label" colspan="2" style="border-color: #b5b8bb;border-bottom: 1px solid #b5b8bb;vertical-align: middle;font-size: 14px;font-weight: bold;">Total AUD</td>
+                                  <td class="total amount-due" style="border-color: #b5b8bb;border-bottom: 1px solid #b5b8bb;">        <span style="font-size: 24px;line-height: 28px;font-weight: bold;text-shadow: 0 -1px 0 rgba(255,255,255,0.75);">{{TOTAL}}</span></td>
+                               </tr>
+                               </tfoot>
+                            </table>
+                         </div>
+                      </div>
+                </div>
+             </div>
+        </div>
+    </div>
+
+
+
+</div>
+</body>
+</html>
