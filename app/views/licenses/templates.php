@@ -29,7 +29,10 @@ use Framework\models\pos\ItemsModel;
                             <td><?= \Framework\lib\Helper::ConvertDateFormat($item->created, true) ?></td>
                             <td style="text-align: center">
                                 <a href="<?= HOST_NAME.'licenses/template/'.$item->id ?>" title="Edit Template"><i class="fa fa-edit"></i></a>
-                                <a href="#" data-id="<?= $item->id ?>" data-classname="licenses\digital_licenses_templates" class="ajax-delete" title="Delete Template"><i class="fa fa-trash"></i></a>
+
+                                <?php if ($item->template_name != 'Your-Subscription-is-about-to-expire' && $item->template_name != 'Your-Subscription-has-expired') : ?>
+                                    <a href="#" data-id="<?= $item->id ?>" data-classname="licenses\digital_licenses_templates" data-extra-action="digital_licenses_template_delete" class="ajax-delete" title="Delete Template"><i class="fa fa-trash"></i></a>
+                                <?php endif; ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>

@@ -160,7 +160,6 @@ class IndexController extends AbstractController
                                     $mail->to_name = $technician->firstName.' '.$technician->lastName;
                                     $mail->subject = "New Job Notification";
                                     $mail->message = $template;
-                                    $mail->alt_message = $template;
 
                                     if ($mail->Send()) {
                                         $this->logger->info("New Job Notification Email was sent to technician $technician->lastName Regarding Job ID: $repair->job_id ", array('job_id' => $repair->job_id));
@@ -219,7 +218,6 @@ class IndexController extends AbstractController
                         $mail->to_name = $customer_details->firstName.' '.$customer_details->lastName;
                         $mail->subject = "New Repair Job Notification";
                         $mail->message = $template;
-                        $mail->alt_message = $template;
 
                         if ($mail->Send()) {
                             $this->logger->info("Job Notification Email was sent to customer $customer_details->lastName Regarding Job ID: $customer_details->job_id ", array('job_id' => $repair->job_id));

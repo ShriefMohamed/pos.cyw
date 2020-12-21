@@ -26,6 +26,7 @@ use function GuzzleHttp\headers_from_lines;
 
 class CustomerController extends AbstractController
 {
+
     public function DefaultAction()
     {
         $jobs = RepairsModel::getRepairs("WHERE repairs.user_id = ". Session::Get('loggedin')->id);
@@ -178,7 +179,6 @@ class CustomerController extends AbstractController
                         $mail->to_name = $technician->firstName.' '.$technician->lastName;
                         $mail->subject = "Job Notification, Quote Approved by Customer";
                         $mail->message = $template;
-                        $mail->alt_message = $template;
 
                         if ($mail->Send()) {
                             $this->logger->info("Job Notification Email was sent to technician $technician->lastName about quote approval.", array('job_id' => $repair->job_id, 'Customer' => Session::Get('loggedin')->username));
@@ -256,7 +256,6 @@ class CustomerController extends AbstractController
                         $mail->to_name = $technician->firstName.' '.$technician->lastName;
                         $mail->subject = "Job Notification, Quote Approved by Customer";
                         $mail->message = $template;
-                        $mail->alt_message = $template;
 
                         if ($mail->Send()) {
                             $this->logger->info("Job Notification Email was sent to technician $technician->lastName about quote approval.", array('job_id' => $repair->job_id, 'Customer' => Session::Get('loggedin')->username));
@@ -365,7 +364,6 @@ class CustomerController extends AbstractController
                             $mail->to_name = $cutomer_details->firstName.' '.$cutomer_details->lastName;
                             $mail->subject = "Job Notification, New Note was Added";
                             $mail->message = $template;
-                            $mail->alt_message = $template;
 
                             if ($mail->Send()) {
                                 $this->logger->info("Job Notification Email was sent to customer $cutomer_details->lastName about new note.", array('job_id' => $repair->job_id, 'Admin' => Session::Get('loggedin')->username));

@@ -3,6 +3,8 @@
     <section class="card card-fluid">
         <div class="card-body" style="padding: 0;">
             <form method="post" id="license-form" autocomplete="off">
+                <input type="hidden" name="user-id" id="user-id-holder" value="<?= $data->user_id ?>">
+                <input type="hidden" name="customer-id" id="customer-id-holder" value="<?= $data->customer_id ?>">
 
                 <div class="functions">
                     <button type="submit" name="preview" class="btn btn-info-dark">Preview Email</button>
@@ -66,39 +68,11 @@
                                 <select name="email-template" class="form-control form-round email-template-select" required>
                                     <?php if (isset($templates) && $templates != false) : ?>
                                         <?php foreach ($templates as $template) : ?>
-                                        <option <?= $template->template_name == $data->template ? 'selected' : '' ?> value="<?= $template->template_name ?>"><?= $template->template_name ?></option>
+                                            <option value="<?= $template ?>"><?= $template ?></option>
                                         <?php endforeach; ?>
                                     <?php endif; ?>
                                 </select>
                             </div>
-
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <label><b>License Expires After:</b></label>
-                                    <div class="row form-group">
-                                    <?php $numbers = ['One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven']; ?>
-                                        <div class="col-md-6">
-                                            <label for="expiration-year">Years</label>
-                                            <select class="form-control form-round" name="expiration-year" id="expiration-year" required>
-                                                <option value="0">0</option>
-                                                <?php for ($i = 0; $i < 10; $i++) : ?>
-                                                    <option <?= $data->expiration_years && $data->expiration_years == ($i + 1) ? 'selected' : '' ?> value="<?= ($i + 1) ?>"><?= $numbers[$i] ?> Year<?= $i >= 1 ? 's' : '' ?></option>
-                                                <?php endfor; ?>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label for="expiration-month">Months</label>
-                                            <select class="form-control form-round" name="expiration-month" id="expiration-month" required>
-                                                <option value="0">0</option>
-                                                <?php for ($i = 0; $i <= 10; $i++) : ?>
-                                                    <option <?= $data->expiration_months && $data->expiration_months == ($i + 1) ? 'selected' : '' ?> value="<?= ($i + 1) ?>"><?= $numbers[$i] ?> Month<?= $i >= 1 ? 's' : '' ?></option>
-                                                <?php endfor; ?>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
                         </div>
                     </div>
                 </div>

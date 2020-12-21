@@ -125,7 +125,6 @@ class TechnicianController extends AbstractController
                         $mail->to_name = $technician->firstName.' '.$technician->lastName;
                         $mail->subject = "New Job Notification";
                         $mail->message = $template;
-                        $mail->alt_message = $template;
 
                         if ($mail->Send()) {
                             $this->logger->info("New Job Notification Email was sent to technician $technician->lastName Regarding Job ID: $repair->job_id ", array('job_id' => $repair->job_id, 'technician' => Session::Get('loggedin')->username));
@@ -178,7 +177,6 @@ class TechnicianController extends AbstractController
                         $mail->to_name = $cutomer_details->firstName.' '.$cutomer_details->lastName;
                         $mail->subject = "New Repair Job was Created";
                         $mail->message = $template;
-                        $mail->alt_message = $template;
 
                         if ($mail->Send()) {
                             $this->logger->info("Job Notification Email was sent to customer $cutomer_details->lastName.", array('job_id' => $repair->job_id, 'technician' => Session::Get('loggedin')->username));
@@ -363,7 +361,6 @@ class TechnicianController extends AbstractController
                                             $mail->to_name = $cutomer_details->firstName.' '.$cutomer_details->lastName;
                                             $mail->subject = "Job Notification";
                                             $mail->message = $template;
-                                            $mail->alt_message = $template;
 
                                             if ($mail->Send()) {
                                                 $this->logger->info("Job Notification Email was sent to customer $cutomer_details->lastName Regarding Job ID: $updated_repair->job_id ", array('job_id' => $updated_repair->job_id, 'technician' => Session::Get('loggedin')->username));
@@ -464,7 +461,6 @@ class TechnicianController extends AbstractController
                                 $mail->to_name = $technician->firstName.' '.$technician->lastName;
                                 $mail->subject = "New Job Notification";
                                 $mail->message = $template;
-                                $mail->alt_message = $template;
 
                                 if ($mail->Send()) {
                                     $this->logger->info("New Job Notification Email was sent to technician $technician->lastName Regarding Job ID: $old_repair->job_id ", array('job_id' => $old_repair->job_id));
@@ -555,7 +551,6 @@ class TechnicianController extends AbstractController
                         $mail->to_name = $technician->firstName.' '.$technician->lastName;
                         $mail->subject = "Job Notification, Quote Approved by Technician";
                         $mail->message = $template;
-                        $mail->alt_message = $template;
 
                         if ($mail->Send()) {
                             $this->logger->info("Job Notification Email was sent to technician $technician->lastName about quote approval.", array('job_id' => $repair->job_id, 'technician' => Session::Get('loggedin')->username));
@@ -688,7 +683,6 @@ class TechnicianController extends AbstractController
                             $mail->to_name = $cutomer_details->firstName.' '.$cutomer_details->lastName;
                             $mail->subject = "Job Notification, New Note was Added";
                             $mail->message = $template;
-                            $mail->alt_message = $template;
 
                             if ($mail->Send()) {
                                 $this->logger->info("Job Notification Email was sent to customer $cutomer_details->lastName about new note.", array('job_id' => $repair->job_id, 'technician' => Session::Get('loggedin')->username));
@@ -898,7 +892,6 @@ class TechnicianController extends AbstractController
                     $mail->to_name = $technician->firstName.' '.$technician->lastName;
                     $mail->subject = "New Job Notification";
                     $mail->message = $template;
-                    $mail->alt_message = $template;
 
                     if ($mail->Send()) {
                         $this->logger->info("New Job Notification Email was sent to technician $technician->lastName Regarding Job ID: $o_repair->job_id ", array('job_id' => $o_repair->job_id));
@@ -1009,7 +1002,6 @@ class TechnicianController extends AbstractController
                                 $mail->to_name = $company->name;
                                 $mail->subject = "Insurance Report";
                                 $mail->message = $template;
-                                $mail->alt_message = $template;
                                 $mail->attachment = array(INSURANCE_REPORTS_PATH.$document);
 
                                 if ($mail->Send()) {

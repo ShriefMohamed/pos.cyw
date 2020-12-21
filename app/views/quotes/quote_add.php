@@ -4,17 +4,30 @@
         <div class="card-body" style="padding: 0;">
             <form method="post" id="quote-form" autocomplete="off">
                 <div class="customer-info-container">
-                    <div class="functions">
-                        <button type="button" title="Continue" class="btn btn-success continue-to-component" style="padding: .375rem 1.75rem;">Continue</button>
-                    </div>
+                    <div class="customer-form-container" id="register">
+                        <div class="register-customer">
+                            <input type="hidden" name="user-id" id="user-id-holder" value="">
+                            <input type="hidden" name="customer-id" id="customer-id-holder" value="">
 
-                    <div class="customer-form-container" style="padding: 20px 12px;">
-                        <div class="row">
+                            <div id="customerInfo" class="block placeholder">No Customer Selected</div>
+                            <button id="customerRemoveButton" tabindex="9" type="button" class="gui-def-button" style="display: none;"><i class="fa fa-trash"></i> Remove</button>
+
+                            <div class="search" >
+                                <input tabindex="6" type="text" id="find_customer_text" autocomplete="off" placeholder="Search Customers" class="group group-start small">
+                                <button id="searchCustomerButton" type="button" class="group group-end gui-def-button">
+                                    <i class="fa fa-search"></i> Search
+                                </button>
+                            </div>
+                            <a href="<?= HOST_NAME ?>customers/customer_add" target="_blank"><button type="button" class="gui-def-button"><i class="fa fa-plus"></i> New</button></a>
+                        </div>
+
+
+                        <div class="row" style="padding: 20px 15px;">
                             <div class="col-md-12">
                                 <div class="row">
                                     <div class="col-md-6">
                                         <div class="form-group first-name-group">
-                                            <label class="custom-form-label">First Name* <i class="fa fa-trash remove-attached-customer hidden"></i></label>
+                                            <label class="custom-form-label">First Name*</label>
                                             <input type="text" class="form-control form-round first_name_input" name="f_name" placeholder="First Name" required autocomplete="chrome-off">
                                         </div>
                                     </div>
@@ -418,6 +431,22 @@
 
                         <div class="modal-body">
                             <div class="description-area"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal fade" id="search-results-modal">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header bg-primary">
+                            <h4 class="modal-title"></h4>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body clearfix" style="padding: 20px;">
+
                         </div>
                     </div>
                 </div>

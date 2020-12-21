@@ -16,8 +16,9 @@ class Digital_licenses_assigned_licensesModel extends AbstractModel
     public $expiration_months;
     public $expiration_date;
     public $license_status; // active, expired, disabled
-    public $_35_days_notification;
-    public $_15_days_notification;
+    public $_60_days_notification;
+    public $_30_days_notification;
+    public $_1_day_notification;
     public $created;
 
     protected static $tableName = 'digital_licenses_assigned_licenses';
@@ -30,7 +31,8 @@ class Digital_licenses_assigned_licensesModel extends AbstractModel
         'expiration_months' => self::DATA_TYPE_INT,
         'expiration_date' => self::DATA_TYPE_STR,
         'license_status' => self::DATA_TYPE_STR,
-        '_35_days_notification' => self::DATA_TYPE_INT,
-        '_15_days_notification' => self::DATA_TYPE_INT
+        '_60_days_notification' => self::DATA_TYPE_STR,
+        '_30_days_notification' => self::DATA_TYPE_STR,
+        '_1_day_notification' => self::DATA_TYPE_STR
     );
 }

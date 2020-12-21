@@ -266,7 +266,6 @@ class QuotesController extends AbstractController
                             $mail->to_name = $customer->firstName.' '.$customer->lastName;
                             $mail->subject = "Quote From Compute Your World";
                             $mail->message = Helper::GenerateTemplate('quote-email-template', $email_variables);
-                            $mail->alt_message = Helper::GenerateTemplate('quote-email-template', $email_variables);
                             $mail->attachment = [QUOTES_PATH.$document];
 
                             if ($mail->Send()) {
@@ -542,7 +541,6 @@ class QuotesController extends AbstractController
         $mail->to_name = "Shrief Mohamed";
         $mail->subject = "Quote From Compute Your World";
         $mail->message = Helper::GenerateTemplate('quote-email-template', $email_variables);
-        $mail->alt_message = Helper::GenerateTemplate('quote-email-template', $email_variables);
         $mail->Send();
 
 

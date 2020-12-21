@@ -24,8 +24,20 @@ class AbstractController
     protected $_action;
     protected $_params;
     protected $_template;
-    protected $_logs_stream;
+
     public $logger;
+    public $logs_types = [
+        'admin' => 'jobs',
+        'cron' => 'cron',
+        'customers' => 'customers',
+        'customer' => 'customer',
+        'insurance' => 'insurance',
+        'licenses' => 'licenses',
+        'pos' => 'pos',
+        'quotes' => 'quotes',
+        'technicians' => 'technicians',
+        'xero' => 'xero'
+    ];
 
     public function __construct($controllerName, $actionName, $params)
     {
@@ -61,30 +73,14 @@ class AbstractController
         $this->_template = new Template($this->_controller, $this->_action);
     }
 
-    public function InitializeLogger($logs_name = '')
+    public function InitializeLogger()
     {
-        // Set Log
-        switch ($this->_controller) {
-            case 'pos':
-                $logs_name = 'POS';
-                break;
-            case 'quotes':
-                $logs_name = 'quotes';
-                break;
-            case 'admin':
-                $logs_name = 'jobs';
-                break;
-            case 'cron':
-                $logs_name = 'cron';
-                break;
-            default:
-                $logs_name = 'logs';
-                break;
-        }
-        $loggerModel = new LoggerModel($logs_name);
-        $logger = $loggerModel->InitializeLogger();
-        $this->logger = $logger['logger'];
-        $this->_logs_stream = $logger['logs_stream'];
+        // Set Default Log
+        $logs_name = in_array($this->_controller, $this->logs_types)
+            ? $this->logs_types[$this->_controller]
+            : 'logs';
+
+        $this->logger = LoggerModel::Instance($logs_name)->InitializeLogger();
     }
 
 
@@ -112,32 +108,19 @@ class AbstractController
 
 
 
-    protected function SendSMS($message, $phone)
+    protected function SendSMS($message, $phone): bool
     {
-        if ($message && $phone) {
-            $mail = new MailModel();
-            $mail->from_email = CONTACT_EMAIL;
-            $mail->to_email = $phone.'@mymobileapi.com';
-            $mail->subject = "[un=computeyourworld][pw=Xeon@2.30]";
-            $mail->message = $message;
-            return $mail->Send();
+        if (!$message || !$phone) {
+            return false;
         }
-    }
 
-//    protected function SendSMS($message, $phone)
-//    {
-//        if ($message && $phone) {
-//            $client = new Client();
-//            $sendRequestBody = json_decode(
-//                '{ "messages" : [ { "content" : "'.$message.'", "destination" : "'.$phone.'" } ] }',true
-//            );
-//            return $client->request('POST', "https://rest.mymobileapi.com/v1/bulkmessages", [
-//                'json' => $sendRequestBody,
-//                'headers' => ['Authorization' => "Bearer " . MOBILE_API_KEY],
-//                'http_errors' => false
-//            ]);
-//        }
-//    }
+        $mail = new MailModel();
+        $mail->from_email = CONTACT_EMAIL;
+        $mail->from_name = CONTACT_NAME;
+        $mail->to_email = $phone.'@sms.cyw.net.au';
+        $mail->message = $message;
+        return $mail->Send();
+    }
 
 
     /*POS Functions*/

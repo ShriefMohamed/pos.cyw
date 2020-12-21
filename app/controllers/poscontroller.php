@@ -7,6 +7,7 @@ namespace Framework\controllers;
 use Framework\Lib\AbstractController;
 use Framework\lib\FilterInput;
 use Framework\lib\Helper;
+use Framework\lib\LoggerModel;
 use Framework\lib\MailModel;
 use Framework\lib\Redirect;
 use Framework\lib\Request;
@@ -1912,6 +1913,11 @@ class PosController extends AbstractController
 
 
                     $this->logger->info("Sale was saved successfully.", Helper::AppendLoggedin(['Sale UID' => $sale->uid]));
+                    if ($sale->customer_id) {
+                        LoggerModel::Instance($sale->customer_id, 'customers')
+                            ->InitializeLogger()
+                            ->info("Sale was created for customer.", Helper::AppendLoggedin(['Sale ID' => $sale->uid]));
+                    }
                     if ($sale->sale_type == 'sale') {
                         Redirect::To('pos/sale_payment/' . $sale->id);
                     } else {
@@ -1919,6 +1925,12 @@ class PosController extends AbstractController
                     }
                 } else {
                     $this->logger->error("Failed to create new sale. General saving error!", Helper::AppendLoggedin([]));
+                    if ($sale->customer_id) {
+                        LoggerModel::Instance($sale->customer_id, 'customers')
+                            ->InitializeLogger()
+                            ->error("Failed to create new sale for customer.", Helper::AppendLoggedin());
+                    }
+
                     Helper::SetFeedback('error', "Failed to save sale. Something went wrong!");
                 }
             } else {
@@ -2047,6 +2059,12 @@ class PosController extends AbstractController
                         }
 
                         $this->logger->info("Sale was updated successfully.", Helper::AppendLoggedin(['Sale ID' => $sale->id]));
+                        if ($sale->customer_id) {
+                            LoggerModel::Instance($sale->customer_id, 'customers')
+                                ->InitializeLogger()
+                                ->info("Customer's sale was updated.", Helper::AppendLoggedin(['Sale ID' => $sale->id]));
+                        }
+
                         if ($sale->sale_type == 'sale') {
                             Redirect::To('pos/sale_payment/' . $sale->id);
                         } else {
@@ -2132,7 +2150,13 @@ class PosController extends AbstractController
                         }
 
 
-                        $this->logger->info("Sale payment update. payment status: ".$sale_update->sale_status, Helper::AppendLoggedin(['Sale ID' => $id, 'Paid' => $total_payments]));
+                        $this->logger->info("Sale payment update. payment status: ".str_replace('_', ' ', $sale_update->sale_status), Helper::AppendLoggedin(['Sale ID' => $id, 'Amount' => $total_payments]));
+                        if ($sale->customer_id) {
+                            LoggerModel::Instance($sale->customer_id, 'customers')
+                                ->InitializeLogger()
+                                ->info("Sale payment update. payment status: ".str_replace('_', ' ', $sale_update->sale_status), Helper::AppendLoggedin(['Sale ID' => $id, 'Amount' => $total_payments]));
+                        }
+
                         Redirect::To('pos/sale_actions/' . $id);
                     } else {
                         $this->logger->error("Payments were saved, But failed to mark sale as paid.", Helper::AppendLoggedin(['Sale ID' => $id]));
@@ -2213,7 +2237,6 @@ class PosController extends AbstractController
                 $mail->to_name = $to_name;
                 $mail->subject = $to_subject;
                 $mail->message = Helper::GenerateTemplate('sale-receipt-email-template', ['MESSAGE' => $message]);
-                $mail->alt_message = $message;
                 $mail->attachment = [SALES_RECEIPTS_PATH.$document];
 
                 if ($mail->Send()) {
@@ -2452,7 +2475,6 @@ class PosController extends AbstractController
                 $mail->to_name = $to_name;
                 $mail->subject = $to_subject;
                 $mail->message = Helper::GenerateTemplate('quote-purchase-order-email-template', ['MESSAGE' => $message]);
-                $mail->alt_message = html_entity_decode($message);
                 $mail->attachment = [QUOTES_PO_PATH.$purchase_order->purchase_order.'.pdf'];
 
                 if ($mail->Send()) {

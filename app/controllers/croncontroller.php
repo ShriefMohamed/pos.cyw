@@ -270,7 +270,6 @@ class CronController extends AbstractController
                                 $mail->to_name = $technician->firstName.' '.$technician->lastName;
                                 $mail->subject = "Job in Queue for 24hrs Alert";
                                 $mail->message = $template;
-                                $mail->alt_message = $template;
 
                                 if ($mail->Send()) {
                                     $updated_repair = new RepairsModel();
@@ -343,7 +342,6 @@ class CronController extends AbstractController
                             $mail->to_name = $technician->firstName.' '.$technician->lastName;
                             $mail->subject = "Job in Queue for 24hrs Alert";
                             $mail->message = $template;
-                            $mail->alt_message = $template;
 
                             if ($mail->Send()) {
                                 $updated_repair = new RepairsModel();
@@ -411,7 +409,6 @@ class CronController extends AbstractController
                     $mail->to_name = $technician->firstName.' '.$technician->lastName;
                     $mail->subject = "Daily Jobs Report";
                     $mail->message = $template;
-                    $mail->alt_message = $template;
 
                     if ($mail->Send()) {
                         $this->logger->info("Daily jobs report email was sent to technician.", array('technician' => $technician->username, 'job_id' => $repair->job_id));
@@ -768,7 +765,8 @@ class CronController extends AbstractController
         $response = json_decode($response) ? json_decode($response) : false;
         if (is_object($response)) {
             if (isset($response->Item)) {
-                $this->logger->info("Neto Products Updated.", ['Products' => str_replace('"', '', json_encode($response->Item))]);
+//                $this->logger->info("Neto Products Updated.", ['Products' => str_replace('"', '', json_encode($response->Item))]);
+                $this->logger->info("Neto Products Updated.");
             }
             if (isset($response->Messages)) {
                 $this->logger->error("Neto Products Update Failed.", ['Response' => str_replace('"', '', json_encode($response->Messages))]);
@@ -787,25 +785,68 @@ class CronController extends AbstractController
     {
         $this->logger->info("Check for expired digital licenses started. Results/Errors will be logged next (if any).");
 
-        $expired_licenses = Digital_licenses_assigned_licensesModel::getAll(" WHERE expiration_date <= DATE('".date('Y-m-d')."') && license_status != 'expired' ");
+        $expired_licenses = Digital_licenses_assigned_licensesModel::getColumns(
+            ['id', 'license_assign_id'],
+            " expiration_date <= DATE('".date('Y-m-d')."') 
+            && license_status != 'expired'"
+        );
+
         if ($expired_licenses) {
             foreach ($expired_licenses as $expired_license) {
+                $license_assign_details = Digital_licenses_assignModel::getSpecificLicenseAssignAllDetails($expired_license['license_assign_id'], $expired_license['id']);
+
                 // expire digital_licenses_assign & digital_licenses_assigned_licenses && digital_licenses
                 $license_assign = new Digital_licenses_assignModel();
-                $license_assign->id = $expired_license->license_assign_id;
+                $license_assign->id = $license_assign_details->license_assign_id;
                 $license_assign->status = 'expired';
                 if ($license_assign->Save()) {
                     $license_assigned_license = new Digital_licenses_assigned_licensesModel();
-                    $license_assigned_license->id = $expired_license->id;
+                    $license_assigned_license->id = $license_assign_details->id;
                     $license_assigned_license->license_status = 'expired';
                     if ($license_assigned_license->Save()) {
                         $license = new Digital_licensesModel();
-                        $license->id = $expired_license->license_id;
+                        $license->id = $license_assign_details->license_id;
                         $license->expired = '1';
                         if ($license->Save()) {
-                            $this->logger->info("Customer's license expired.", ['Assigned License ID' => $expired_license->id, 'License' => $expired_license->license]);
+                            $this->logger->info("Customer's license expired.", ['Assigned License ID' => $license_assign_details->id, 'License' => $license_assign_details->license]);
 
-                            // Send email to customer.
+                            // Send email to customer & alerts@cyw.
+                            if (file_exists(DIGITAL_LICENCES_TEMPLATES_PATH.'Your-Subscription-has-expired.html')) {
+                                // Send notification email to customer.
+                                $variables = [
+                                    'IMAGES' => EMAIL_IMAGES_DIR,
+                                    'URL' => HOST_NAME . 'index/unsubscribe/licenses?c=' . $license_assign_details->customer_id,
+
+                                    'first_name' => $license_assign_details->firstName,
+                                    'last_name' => $license_assign_details->lastName,
+                                    'product_name' => $license_assign_details->item,
+                                    'license_code' => $license_assign_details->license,
+                                    'expiration_period' => Helper::getLicenseExpirationPeriod($license_assign_details->expiration_years, $license_assign_details->expiration_months),
+                                    'expiration_period_in_days' => Helper::DateDiff(date('Y-m-d'), $license_assign_details->expiration_date)->days,
+                                    'expiration_date' => date('d-m-Y', strtotime($license_assign_details->expiration_date))
+                                ];
+
+                                $template = file_get_contents(DIGITAL_LICENCES_TEMPLATES_PATH.'Your-Subscription-is-about-to-expire.html');
+                                foreach ($variables as $key => $value) {
+                                    $template = str_replace('{'.$key.'}', $value, $template);
+                                }
+
+                                $mail = new MailModel();
+                                $mail->from_email = CONTACT_EMAIL;
+                                $mail->from_name = CONTACT_NAME;
+                                $mail->to_email = $license_assign_details->email;
+                                $mail->to_name = $license_assign_details->firstName.' '.$license_assign_details->lastName;
+                                $mail->cc = ["Compute Your World", "alerts@computeyourworld.com.au"];
+                                $mail->subject = "Your License has Expired";
+                                $mail->message = $template;
+                                if ($mail->Send()) {
+                                    $this->logger->info('License expired email notification was sent to customer successfully!', ['Customer' => $license_assign_details->firstName.' '.$license_assign_details->lastName, 'Product' => $license_assign_details->item, 'License' => $license_assign_details->license]);
+                                } else {
+                                    $this->logger->error('Failed to send 30 Days license expiration email notification to customer!', ['Customer' => $license_assign_details->firstName.' '.$license_assign_details->lastName, 'Product' => $license_assign_details->item, 'License' => $license_assign_details->license]);
+                                }
+                            } else {
+                                $this->logger->error('Failed to send expired license email notification to customer! Email template doesn\'t exist!', ['Customer' => $license_assign_details->firstName.' '.$license_assign_details->lastName, 'Product' => $license_assign_details->item, 'License' => $license_assign_details->license, 'Template' => 'Your-Subscription-is-about-to-expire']);
+                            }
 
                         } else {
                             $this->logger->error("Failed to expired customer's license. Digital_licensesModel Error.", ['Assigned License ID' => $expired_license->id, 'License' => $expired_license->license]);
@@ -820,110 +861,181 @@ class CronController extends AbstractController
         }
     }
 
+    // Daily
     public function About_to_expire_digital_licenses_notificationsAction()
     {
         $this->logger->info("Check for 'about to expire digital licenses' started. Results/Errors will be logged next (if any).");
 
-        $after_35_days = (new \DateTime())->modify('+35 days')->format('Y-m-d');
-        $after_15_days = (new \DateTime())->modify('+15 days')->format('Y-m-d');
+        $after_60_days = (new \DateTime())->modify('+60 days')->format('Y-m-d');
+        $after_30_days = (new \DateTime())->modify('+30 days')->format('Y-m-d');
+        $after_1_day = (new \DateTime())->modify('+1 days')->format('Y-m-d');
 
-        $licenses_35_days = Digital_licenses_assigned_licensesModel::getColumns(
+        $licenses_60_days = Digital_licenses_assigned_licensesModel::getColumns(
             ['id', 'license_assign_id'],
-            " (expiration_date > DATE('".$after_15_days."') && DATE(expiration_date) <= DATE('".$after_35_days."')) 
+            " (expiration_date > DATE('".$after_30_days."') && DATE(expiration_date) <= DATE('".$after_60_days."')) 
             && license_status = 'active'
-            && _35_days_notification != '1'"
+            && _60_days_notification != '1'"
         );
-        $licenses_15_days = Digital_licenses_assigned_licensesModel::getColumns(
+        $licenses_30_days = Digital_licenses_assigned_licensesModel::getColumns(
             ['id', 'license_assign_id'],
-            " expiration_date <= DATE('".$after_15_days."') 
+            " (expiration_date > DATE('".$after_1_day."') && DATE(expiration_date) <= DATE('".$after_30_days."')) 
             && license_status = 'active'
-            && _15_days_notification != '1'"
+            && _30_days_notification != '1'"
+        );
+        $licenses_1_day = Digital_licenses_assigned_licensesModel::getColumns(
+            ['id', 'license_assign_id'],
+            " expiration_date <= DATE('".$after_1_day."') 
+            && license_status = 'active'
+            && _1_day_notification != '1'"
         );
 
-        if ($licenses_35_days) {
-            foreach ($licenses_35_days as $license_35_days) {
-                $license_assign_details = Digital_licenses_assignModel::getSpecificLicenseAssignAllDetails($license_35_days['license_assign_id'], $license_35_days['id']);
-
+        if ($licenses_60_days) {
+            foreach ($licenses_60_days as $license_60_days) {
+                $license_assign_details = Digital_licenses_assignModel::getSpecificLicenseAssignAllDetails($license_60_days['license_assign_id'], $license_60_days['id']);
                 if ($license_assign_details->licensesNotifications != '1') {
-                    $this->logger->info("Customer's license is about to expire in 35 days, but no notifications sent. customer unsubscribed.", ['Customer' => $license_assign_details->firstName.' '.$license_assign_details->lastName, 'Product' => $license_assign_details->item, 'License' => $license_assign_details->license]);
+                    $this->logger->info("Customer's license is about to expire in 60 days, but no notifications sent. customer unsubscribed.", ['Customer' => $license_assign_details->firstName.' '.$license_assign_details->lastName, 'Product' => $license_assign_details->item, 'License' => $license_assign_details->license]);
                 } else {
-                    // Send notification email to customer.
-                    $variables = [
-                        'IMAGES' => EMAIL_IMAGES_DIR,
-                        'UNSUBSCRIBE_URL' => HOST_NAME.'index/unsubscribe/licenses?c='.$license_assign_details->customer_id,
-                        'name' => $license_assign_details->firstName,
-                        'message' => "This is an automated email from Compute Your World to inform you that 
-                                your license for <strong>".$license_assign_details->item."</strong> will expire in ".Helper::DateDiff(date('Y-m-d'), $license_assign_details->expiration_date)->days." days.
-                                <br>Contact us soon in order to renew your subscription.",
-                        'expiration_date' => date('d-m-Y', strtotime($license_assign_details->expiration_date))
-                    ];
+                    if (file_exists(DIGITAL_LICENCES_TEMPLATES_PATH.'Your-Subscription-is-about-to-expire.html')) {
+                        // Send notification email to customer.
+                        $variables = [
+                            'IMAGES' => EMAIL_IMAGES_DIR,
+                            'URL' => HOST_NAME . 'index/unsubscribe/licenses?c=' . $license_assign_details->customer_id,
 
-                    $template = file_get_contents(EMAIL_TEMPLATES_PATH.'license-expiration-notification.html');
-                    foreach ($variables as $key => $value) {
-                        $template = str_replace('{'.$key.'}', $value, $template);
-                    }
+                            'first_name' => $license_assign_details->firstName,
+                            'last_name' => $license_assign_details->lastName,
+                            'product_name' => $license_assign_details->item,
+                            'license_code' => $license_assign_details->license,
+                            'expiration_period' => Helper::getLicenseExpirationPeriod($license_assign_details->expiration_years, $license_assign_details->expiration_months),
+                            'expiration_period_in_days' => Helper::DateDiff(date('Y-m-d'), $license_assign_details->expiration_date)->days,
+                            'expiration_date' => date('d-m-Y', strtotime($license_assign_details->expiration_date))
+                        ];
 
-                    $mail = new MailModel();
-                    $mail->from_email = CONTACT_EMAIL;
-                    $mail->from_name = CONTACT_NAME;
-                    $mail->to_email = $license_assign_details->email;
-                    $mail->to_name = $license_assign_details->firstName.' '.$license_assign_details->lastName;
-                    $mail->subject = "Your License is About to Expire";
-                    $mail->message = $template;
-                    $mail->alt_message = html_entity_decode($template);
-                    if (!$mail->Send()) {
-                        $this->logger->info('35 Days license expiration email notification was sent to customer successfully!', ['Customer' => $license_assign_details->firstName.' '.$license_assign_details->lastName, 'Product' => $license_assign_details->item, 'License' => $license_assign_details->license]);
+                        $template = file_get_contents(DIGITAL_LICENCES_TEMPLATES_PATH.'Your-Subscription-is-about-to-expire.html');
+                        foreach ($variables as $key => $value) {
+                            $template = str_replace('{'.$key.'}', $value, $template);
+                        }
 
-                        $update_license = new Digital_licenses_assigned_licensesModel();
-                        $update_license->id = $license_assign_details->assigned_license_id;
-                        $update_license->_35_days_notification = '1';
-                        $update_license->Save();
+                        $mail = new MailModel();
+                        $mail->from_email = CONTACT_EMAIL;
+                        $mail->from_name = CONTACT_NAME;
+                        $mail->to_email = $license_assign_details->email;
+                        $mail->to_name = $license_assign_details->firstName.' '.$license_assign_details->lastName;
+                        $mail->subject = "Your License is About to Expire in 60 Days";
+                        $mail->message = $template;
+                        if ($mail->Send()) {
+                            $this->logger->info('60 Days license expiration email notification was sent to customer successfully!', ['Customer' => $license_assign_details->firstName.' '.$license_assign_details->lastName, 'Product' => $license_assign_details->item, 'License' => $license_assign_details->license]);
+
+                            $update_license = new Digital_licenses_assigned_licensesModel();
+                            $update_license->id = $license_assign_details->id;
+                            $update_license->_60_days_notification = '1';
+                            $update_license->Save();
+                        } else {
+                            $this->logger->error('Failed to send 60 Days license expiration email notification to customer!', ['Customer' => $license_assign_details->firstName.' '.$license_assign_details->lastName, 'Product' => $license_assign_details->item, 'License' => $license_assign_details->license]);
+                        }
                     } else {
-                        $this->logger->error('Failed to send 35 Days license expiration email notification to customer!', ['Customer' => $license_assign_details->firstName.' '.$license_assign_details->lastName, 'Product' => $license_assign_details->item, 'License' => $license_assign_details->license]);
+                        $this->logger->error('Failed to send 1 Day license expiration email notification to customer! Email template doesn\'t exist!', ['Customer' => $license_assign_details->firstName.' '.$license_assign_details->lastName, 'Product' => $license_assign_details->item, 'License' => $license_assign_details->license, 'Template' => 'Your-Subscription-is-about-to-expire']);
                     }
                 }
             }
         }
 
-        if ($licenses_15_days) {
-            foreach ($licenses_15_days as $license_15_days) {
-                $license_assign_details = Digital_licenses_assignModel::getSpecificLicenseAssignAllDetails($license_15_days['license_assign_id'], $license_15_days['id']);
+        if ($licenses_30_days) {
+            foreach ($licenses_30_days as $license_30_days) {
+                $license_assign_details = Digital_licenses_assignModel::getSpecificLicenseAssignAllDetails($license_30_days['license_assign_id'], $license_30_days['id']);
                 if ($license_assign_details->licensesNotifications != '1') {
-                    $this->logger->info("Customer's license is about to expire in 15 days, but no notifications sent. customer unsubscribed.", ['Customer' => $license_assign_details->firstName.' '.$license_assign_details->lastName, 'Product' => $license_assign_details->item, 'License' => $license_assign_details->license]);
+                    $this->logger->info("Customer's license is about to expire in 30 days, but no notifications sent. customer unsubscribed.", ['Customer' => $license_assign_details->firstName.' '.$license_assign_details->lastName, 'Product' => $license_assign_details->item, 'License' => $license_assign_details->license]);
                 } else {
                     // Send notification email to customer.
-                    $variables = [
-                        'IMAGES' => EMAIL_IMAGES_DIR,
-                        'UNSUBSCRIBE_URL' => HOST_NAME.'index/unsubscribe/licenses?c='.$license_assign_details->customer_id,
-                        'name' => $license_assign_details->firstName,
-                        'message' => "This is an automated email from Compute Your World to inform you that 
-                                your license for <strong>".$license_assign_details->item."</strong> will expire in ".Helper::DateDiff(date('Y-m-d'), $license_assign_details->expiration_date)->days." days.
-                                <br><br>Contact us soon in order to renew your subscription.",
-                        'expiration_date' => date('d-m-Y', strtotime($license_assign_details->expiration_date))
-                    ];
+                    if (file_exists(DIGITAL_LICENCES_TEMPLATES_PATH.'Your-Subscription-is-about-to-expire.html')) {
+                        // Send notification email to customer.
+                        $variables = [
+                            'IMAGES' => EMAIL_IMAGES_DIR,
+                            'URL' => HOST_NAME . 'index/unsubscribe/licenses?c=' . $license_assign_details->customer_id,
 
-                    $template = file_get_contents(EMAIL_TEMPLATES_PATH.'license-expiration-notification.html');
-                    foreach ($variables as $key => $value) {
-                        $template = str_replace('{'.$key.'}', $value, $template);
-                    }
+                            'first_name' => $license_assign_details->firstName,
+                            'last_name' => $license_assign_details->lastName,
+                            'product_name' => $license_assign_details->item,
+                            'license_code' => $license_assign_details->license,
+                            'expiration_period' => Helper::getLicenseExpirationPeriod($license_assign_details->expiration_years, $license_assign_details->expiration_months),
+                            'expiration_period_in_days' => Helper::DateDiff(date('Y-m-d'), $license_assign_details->expiration_date)->days,
+                            'expiration_date' => date('d-m-Y', strtotime($license_assign_details->expiration_date))
+                        ];
 
-                    $mail = new MailModel();
-                    $mail->from_email = CONTACT_EMAIL;
-                    $mail->from_name = CONTACT_NAME;
-                    $mail->to_email = $license_assign_details->email;
-                    $mail->to_name = $license_assign_details->firstName.' '.$license_assign_details->lastName;
-                    $mail->subject = "Your License is About to Expire";
-                    $mail->message = $template;
-                    $mail->alt_message = html_entity_decode($template);
-                    if ($mail->Send()) {
-                        $this->logger->info('15 Days license expiration email notification was sent to customer successfully!', ['Customer' => $license_assign_details->firstName.' '.$license_assign_details->lastName, 'Product' => $license_assign_details->item, 'License' => $license_assign_details->license]);
+                        $template = file_get_contents(DIGITAL_LICENCES_TEMPLATES_PATH.'Your-Subscription-is-about-to-expire.html');
+                        foreach ($variables as $key => $value) {
+                            $template = str_replace('{'.$key.'}', $value, $template);
+                        }
 
-                        $update_license = new Digital_licenses_assigned_licensesModel();
-                        $update_license->id = $license_assign_details->assigned_license_id;
-                        $update_license->_15_days_notification = '1';
-                        $update_license->Save();
+                        $mail = new MailModel();
+                        $mail->from_email = CONTACT_EMAIL;
+                        $mail->from_name = CONTACT_NAME;
+                        $mail->to_email = $license_assign_details->email;
+                        $mail->to_name = $license_assign_details->firstName.' '.$license_assign_details->lastName;
+                        $mail->subject = "Your License is About to Expire in 30 Days";
+                        $mail->message = $template;
+                        if ($mail->Send()) {
+                            $this->logger->info('30 Days license expiration email notification was sent to customer successfully!', ['Customer' => $license_assign_details->firstName.' '.$license_assign_details->lastName, 'Product' => $license_assign_details->item, 'License' => $license_assign_details->license]);
+
+                            $update_license = new Digital_licenses_assigned_licensesModel();
+                            $update_license->id = $license_assign_details->id;
+                            $update_license->_30_days_notification = '1';
+                            $update_license->Save();
+                        } else {
+                            $this->logger->error('Failed to send 30 Days license expiration email notification to customer!', ['Customer' => $license_assign_details->firstName.' '.$license_assign_details->lastName, 'Product' => $license_assign_details->item, 'License' => $license_assign_details->license]);
+                        }
                     } else {
-                        $this->logger->error('Failed to send 15 Days license expiration email notification to customer!', ['Customer' => $license_assign_details->firstName.' '.$license_assign_details->lastName, 'Product' => $license_assign_details->item, 'License' => $license_assign_details->license]);
+                        $this->logger->error('Failed to send 1 Day license expiration email notification to customer! Email template doesn\'t exist!', ['Customer' => $license_assign_details->firstName.' '.$license_assign_details->lastName, 'Product' => $license_assign_details->item, 'License' => $license_assign_details->license, 'Template' => 'Your-Subscription-is-about-to-expire']);
+                    }
+                }
+            }
+        }
+
+        if ($licenses_1_day) {
+            foreach ($licenses_1_day as $license_1_day) {
+                $license_assign_details = Digital_licenses_assignModel::getSpecificLicenseAssignAllDetails($license_1_day['license_assign_id'], $license_1_day['id']);
+                if ($license_assign_details->licensesNotifications != '1') {
+                    $this->logger->info("Customer's license will expire tomorrow, but no notifications sent. customer unsubscribed.", ['Customer' => $license_assign_details->firstName.' '.$license_assign_details->lastName, 'Product' => $license_assign_details->item, 'License' => $license_assign_details->license]);
+                } else {
+                    // Send notification email to customer.
+                    if (file_exists(DIGITAL_LICENCES_TEMPLATES_PATH.'Your-Subscription-is-about-to-expire.html')) {
+                        $variables = [
+                            'IMAGES' => EMAIL_IMAGES_DIR,
+                            'URL' => HOST_NAME . 'index/unsubscribe/licenses?c=' . $license_assign_details->customer_id,
+
+                            'first_name' => $license_assign_details->firstName,
+                            'last_name' => $license_assign_details->lastName,
+                            'product_name' => $license_assign_details->item,
+                            'license_code' => $license_assign_details->license,
+                            'expiration_period' => Helper::getLicenseExpirationPeriod($license_assign_details->expiration_years, $license_assign_details->expiration_months),
+                            'expiration_period_in_days' => Helper::DateDiff(date('Y-m-d'), $license_assign_details->expiration_date)->days,
+                            'expiration_date' => date('d-m-Y', strtotime($license_assign_details->expiration_date))
+                        ];
+
+
+                        $template = file_get_contents(DIGITAL_LICENCES_TEMPLATES_PATH.'Your-Subscription-is-about-to-expire.html');
+                        foreach ($variables as $key => $value) {
+                            $template = str_replace('{'.$key.'}', $value, $template);
+                        }
+
+                        $mail = new MailModel();
+                        $mail->from_email = CONTACT_EMAIL;
+                        $mail->from_name = CONTACT_NAME;
+                        $mail->to_email = $license_assign_details->email;
+                        $mail->to_name = $license_assign_details->firstName.' '.$license_assign_details->lastName;
+                        $mail->subject = "Your License will Expire Tomorrow";
+                        $mail->message = $template;
+                        if ($mail->Send()) {
+                            $this->logger->info('1 Day license expiration email notification was sent to customer successfully!', ['Customer' => $license_assign_details->firstName.' '.$license_assign_details->lastName, 'Product' => $license_assign_details->item, 'License' => $license_assign_details->license]);
+
+                            $update_license = new Digital_licenses_assigned_licensesModel();
+                            $update_license->id = $license_assign_details->id;
+                            $update_license->_1_day_notification = '1';
+                            $update_license->Save();
+                        } else {
+                            $this->logger->error('Failed to send 1 Day license expiration email notification to customer!', ['Customer' => $license_assign_details->firstName.' '.$license_assign_details->lastName, 'Product' => $license_assign_details->item, 'License' => $license_assign_details->license]);
+                        }
+                    } else {
+                        $this->logger->error('Failed to send 1 Day license expiration email notification to customer! Email template doesn\'t exist!', ['Customer' => $license_assign_details->firstName.' '.$license_assign_details->lastName, 'Product' => $license_assign_details->item, 'License' => $license_assign_details->license, 'Template' => 'Your-Subscription-is-about-to-expire']);
                     }
                 }
             }

@@ -16,10 +16,11 @@
 
                             <li class="sales nav-item"><a id="menuSales" class="nav-link" href="#tabs-menu-sales-link" data-toggle="tab">Sales</a></li>
                             <li class="layaways nav-item "><a id="menuLayaways" class="nav-link" href="#tabs-menu-layaways-link" data-toggle="tab">Layaways</a></li>
-                            <li class="special_orders nav-item"><a id="menuSpecialOrders" class="nav-link" href="#tabs-menu-special_orders-link" data-toggle="tab">Special Orders</a></li>
                             <li class="quotes nav-item"><a id="menuQuotes" class="nav-link" href="#tabs-menu-quotes-link" data-toggle="tab">Quotes</a></li>
+                            <li class="licenses nav-item"><a id="menuLicenses" class="nav-link" href="#tabs-menu-licenses-link" data-toggle="tab">Licenses</a></li>
                             <li class="payments nav-item"><a id="menuPayments" class="nav-link" href="#tabs-menu-payments-link" data-toggle="tab">Payments</a></li>
                             <li class="account nav-item"><a id="menuAccount" class="nav-link" data-form="customer-account" href="#tabs-menu-account-link" data-toggle="tab">Account</a></li>
+                            <li class="logs nav-item"><a id="menuLogs" class="nav-link" href="#tabs-menu-logs-link" data-toggle="tab">Logs</a></li>
                         </ul>
 
                         <article id="tabs-menu-details-link" class="view_tab_details tab tab-pane active">
@@ -312,11 +313,11 @@
                                                     <tbody>
                                                     <tr id="view_f_9">
                                                         <td class="view_listing" colspan="2">
-                                                            <h2 class="child-listing-title" id="reports_sales_listings_transaction_line_sales_view_title">Sales</h2>
-                                                            <div id="reports_sales_listings_transaction_line_sales_view" class="is_pannel">
+                                                            <h2 class="child-listing-title">Sales</h2>
+                                                            <div class="is_pannel">
                                                                 <div class="listing">
-                                                                    <div id="work_reports_sales_listings_transaction_line_sales_view">
-                                                                        <div id="reports_sales_listings_transaction_line_sales_view_single">
+                                                                    <div>
+                                                                        <div>
                                                                             <div class="container" style="max-width: 100%;padding-top: 10px">
                                                                                 <table cellpadding="0" cellspacing="0" border="0" class="g-datatable datatable table table-striped table-bordered">
                                                                                     <thead>
@@ -329,6 +330,7 @@
                                                                                         <th>TAX</th>
                                                                                         <th>TOTAL</th>
                                                                                         <th>PAID</th>
+                                                                                        <th>TYPE</th>
                                                                                         <th>STATUS</th>
                                                                                     </tr>
                                                                                     </thead>
@@ -348,7 +350,8 @@
                                                                                                 <td>$<?= number_format($sale->tax, 2) ?></td>
                                                                                                 <td>$<?= number_format($sale->total, 2) ?></td>
                                                                                                 <td>$<?= number_format($sale->total_paid, 2) ?></td>
-                                                                                                <td><?= $sale->sale_status ?></td>
+                                                                                                <td><?= ucfirst($sale->sale_type) ?></td>
+                                                                                                <td><?= ucwords(str_replace('_', ' ', $sale->sale_status)) ?></td>
                                                                                             </tr>
                                                                                         <?php endforeach; ?>
                                                                                     <?php endif; ?>
@@ -426,11 +429,7 @@
                                 <i class="icon-refresh icon-spin"></i> Loading...
                             </div>
                         </article>
-                        <article id="tabs-menu-special_orders-link" class="view_tab_special_orders tab tab-pane">
-                            <div class="content">
-                                <i class="icon-refresh icon-spin"></i> Loading...
-                            </div>
-                        </article>
+
 
                         <article id="tabs-menu-quotes-link" class="view_tab_quotes tab tab-pane">
                             <div class="content">
@@ -443,42 +442,115 @@
                                                     <tbody>
                                                     <tr id="view_f_9">
                                                         <td class="view_listing" colspan="2">
-                                                            <h2 class="child-listing-title" id="reports_sales_listings_transaction_line_sales_view_title">Quotes</h2>
-                                                            <div id="reports_sales_listings_transaction_line_sales_view" class="is_pannel">
+                                                            <h2 class="child-listing-title">Quotes</h2>
+                                                            <div class="is_pannel">
                                                                 <div class="listing">
-                                                                    <div id="work_reports_sales_listings_transaction_line_sales_view">
-                                                                        <div id="reports_sales_listings_transaction_line_sales_view_single">
+                                                                    <div>
+                                                                        <div>
                                                                             <div class="container" style="max-width: 100%;padding-top: 10px">
                                                                                 <table cellpadding="0" cellspacing="0" border="0" class="g-datatable datatable table table-striped table-bordered">
                                                                                     <thead>
                                                                                     <tr>
-                                                                                        <th>UID - ID</th>
+                                                                                        <th>UID</th>
                                                                                         <th>DATE</th>
                                                                                         <th>QTY</th>
-                                                                                        <th>SUBTOTAL</th>
-                                                                                        <th>DISCOUNT</th>
+                                                                                        <th>SYSTEM DBP</th>
+                                                                                        <th>SYSTEM TOTAL</th>
                                                                                         <th>TAX</th>
                                                                                         <th>TOTAL</th>
+                                                                                        <th>STATUS</th>
                                                                                     </tr>
                                                                                     </thead>
                                                                                     <tbody>
-                                                                                    <?php if (isset($sales) && $sales !== false) : ?>
-                                                                                        <?php foreach ($sales as $sale) : ?>
-                                                                                            <?php if ($sale->sale_type == 'quote') : ?>
-                                                                                            <tr style="" class="" id="reports_sales_listings_transaction_line_sales_view_r_<?= $sale->id ?>">
+                                                                                    <?php if (isset($quotes) && $quotes !== false) : ?>
+                                                                                        <?php foreach ($quotes as $quote) : ?>
+                                                                                            <tr style="" class="" id="reports_sales_listings_transaction_line_sales_view_r_<?= $quote->id ?>">
                                                                                                 <td class="string ">
-                                                                                                    <a title="Edit Record" href="<?= HOST_NAME.'pos/sale/'.$sale->id ?>"><span style="padding-right: 5px;"><i class="fa fa-search "></i></span><?= $sale->uid.' - #'.$sale->id ?></a>
+                                                                                                    <a href="<?= HOST_NAME . 'pos/quote/' . $quote->id ?>"><?= $quote->uid ?></a>
                                                                                                 </td>
                                                                                                 <td class="date ">
-                                                                                                    <time datetime="<?= $sale->created ?>" class=""><?= \Framework\lib\Helper::ConvertDateFormat($sale->created) ?></time>
+                                                                                                    <time datetime="<?= $quote->created ?>"><?= \Framework\lib\Helper::ConvertDateFormat($quote->created) ?></time>
                                                                                                 </td>
-                                                                                                <td class="string "><?= $sale->quantity ?></td>
-                                                                                                <td>$<?= number_format($sale->subtotal, 2) ?></td>
-                                                                                                <td>$<?= number_format($sale->discount, 2) ?></td>
-                                                                                                <td>$<?= number_format($sale->tax, 2) ?></td>
-                                                                                                <td>$<?= number_format($sale->total, 2) ?></td>
+                                                                                                <td class="string "><?= $quote->items_count ?></td>
+                                                                                                <td>$<?= number_format($quote->DBP, 2) ?></td>
+                                                                                                <td>$<?= number_format($quote->system_total, 2) ?></td>
+                                                                                                <td>$<?= number_format($quote->GST, 2) ?></td>
+                                                                                                <td>$<?= number_format($quote->total, 2) ?></td>
+                                                                                                <td><?= ucwords(str_replace('-', ' ', $quote->status)) ?></td>
                                                                                             </tr>
-                                                                                            <?php endif; ?>
+                                                                                        <?php endforeach; ?>
+                                                                                    <?php endif; ?>
+                                                                                    </tbody>
+                                                                                </table>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                    </tbody>
+                                                </table>
+                                            </td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </article>
+
+                        <article id="tabs-menu-licenses-link" class="view_tab_licenses tab tab-pane">
+                            <div class="content">
+                                <div class="view-columns">
+                                    <table class="view-layout set_auto_focus">
+                                        <tbody>
+                                        <tr>
+                                            <td>
+                                                <table class="view-column ">
+                                                    <tbody>
+                                                    <tr id="view_f_9">
+                                                        <td class="view_listing" colspan="2">
+                                                            <h2 class="child-listing-title">Digital Licenses</h2>
+                                                            <div class="is_pannel">
+                                                                <div class="listing">
+                                                                    <div>
+                                                                        <div>
+                                                                            <div class="container" style="max-width: 100%;padding-top: 10px">
+                                                                                <table cellpadding="0" cellspacing="0" border="0" class="g-datatable datatable table table-striped table-bordered">
+                                                                                    <thead>
+                                                                                    <tr>
+                                                                                        <td>Product</td>
+                                                                                        <td>License</td>
+                                                                                        <td>Status</td>
+                                                                                        <td>Assigned</td>
+                                                                                        <td>Expiration Date</td>
+                                                                                        <td></td>
+                                                                                    </tr>
+                                                                                    </thead>
+                                                                                    <tbody>
+                                                                                    <?php if (isset($licenses) && $licenses !== false) : ?>
+                                                                                        <?php foreach ($licenses as $license) : ?>
+                                                                                            <tr style="" class="">
+                                                                                                <td class="string ">
+                                                                                                    <a href="<?= HOST_NAME . 'pos/item/'.$license->product_id ?>"><?= $license->item ?></a>
+                                                                                                </td>
+                                                                                                <td class="string"><?= $license->license ?></td>
+                                                                                                <td class="string"><?= ucfirst($license->license_status).($license->license_status == 'active' ? " - ". ucfirst($license->status) : '') ?></td>
+
+                                                                                                <td class="date ">
+                                                                                                    <time datetime="<?= $license->created ?>"><?= \Framework\lib\Helper::ConvertDateFormat($license->created) ?></time>
+                                                                                                </td>
+                                                                                                <td class="date ">
+                                                                                                    <time datetime="<?= $license->expiration_date ?>"><?= \Framework\lib\Helper::ConvertDateFormat($license->expiration_date) ?></time>
+                                                                                                </td>
+                                                                                                <td>
+                                                                                                    <?php if ($license->license_status == 'active') : ?>
+                                                                                                    <a href="<?= HOST_NAME.'licenses/license_resend/'.$license->id.'/'.$license->assigned_license_id ?>" title='Resend License Code to Customer'>Resend Code</a> |
+                                                                                                    <?php endif; ?>
+
+                                                                                                    <a href="<?= HOST_NAME.'licenses/license_renew/'.$license->id ?>" title='Renew License'>Renew License</a>
+                                                                                                </td>
+                                                                                            </tr>
                                                                                         <?php endforeach; ?>
                                                                                     <?php endif; ?>
                                                                                     </tbody>
@@ -735,6 +807,41 @@
                                                                 </tr>
                                                                 </tbody>
                                                             </table>
+                                                        </td>
+                                                    </tr>
+                                                    </tbody>
+                                                </table>
+                                            </td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </article>
+
+                        <article id="tabs-menu-logs-link" class="view_tab_logs tab tab-pane">
+                            <div class="content">
+                                <div class="view-columns">
+                                    <table class="view-layout set_auto_focus">
+                                        <tbody>
+                                        <tr>
+                                            <td>
+                                                <table class="view-column ">
+                                                    <tbody>
+                                                    <tr id="view_f_9">
+                                                        <td class="view_listing" colspan="2">
+                                                            <h2 class="child-listing-title" style="border: 0">Logs</h2>
+                                                            <div class="is_pannel">
+                                                                <div class="listing" style="border: 0">
+                                                                    <div class="container" style="max-width: 100%;padding: 0;padding-top: 10px">
+                                                                        <?php if (isset($logs) && $logs) : ?>
+                                                                            <div class="alert alert-success" role="alert" style="padding: .75rem .75rem 0.75rem .75rem">
+                                                                                <textarea class="js-copytextarea" style="min-height: 400px"><?php foreach ($logs as $log) : echo $log; endforeach; ?></textarea>
+                                                                            </div>
+                                                                        <?php endif; ?>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                     </tbody>

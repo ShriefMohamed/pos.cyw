@@ -140,18 +140,20 @@
 
                 <?php if (\Framework\Lib\Session::Exists('messages')) : ?>
                     <?php foreach (\Framework\Lib\Session::Get('messages') as $message) : ?>
-                        <?php if ($message['type'] !== 'error') : ?>
-                            <div class="alert alert-info" style="margin: 4px 8px 6px;">
-                                <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
-                                <strong style="line-height: 1.5;" class="badge badge-info">Success!</strong>
-                                <?= $message['message'] ?>
-                            </div>
-                        <?php else : ?>
-                            <div class="alert alert-danger" style="margin: 4px 8px 6px;">
-                                <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
-                                <strong style="line-height: 1.5;" class="badge badge-danger">Oh snap!</strong> <?= $message['message'] ?>
-                            </div>
-                        <?php endif; ?>
+                        <?php
+                        switch ($message['type']) :
+                           case 'error': $feedback_type = ['danger', 'Oh snap!']; break;
+                           case 'success': $feedback_type = ['success', 'Success']; break;
+                           case 'warning': $feedback_type = ['warning', 'Warning']; break;
+                           default: $feedback_type = ['info', '!']; break;
+                         endswitch;
+                         ?>
+
+                        <div class="alert alert-<?= $feedback_type[0] ?>" style="margin: 4px 8px 6px;">
+                            <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+                            <strong style="line-height: 1.5;" class="badge badge-<?= $feedback_type[0] ?>"><?= $feedback_type[1] ?></strong>
+                            <?= $message['message'] ?>
+                        </div>
                     <?php endforeach; ?>
                     <?php \Framework\Lib\Session::Remove('messages'); ?>
                 <?php endif; ?>

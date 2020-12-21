@@ -189,7 +189,6 @@ class AdminController extends AbstractController
                         $mail->to_name = $technician->firstName.' '.$technician->lastName;
                         $mail->subject = "New Job Notification";
                         $mail->message = $template;
-                        $mail->alt_message = $template;
 
                         if ($mail->Send()) {
                             $this->logger->info("New Job Notification Email was sent to technician $technician->lastName Regarding Job ID: $repair->job_id ", array('job_id' => $repair->job_id, 'Admin' => Session::Get('loggedin')->username));
@@ -242,40 +241,43 @@ class AdminController extends AbstractController
                         $mail->to_name = $cutomer_details->firstName.' '.$cutomer_details->lastName;
                         $mail->subject = "New Repair Job was Created";
                         $mail->message = $template;
-                        $mail->alt_message = $template;
 
                         if ($mail->Send()) {
-                            $this->logger->info("Job Notification Email was sent to customer $cutomer_details->lastName.", array('job_id' => $repair->job_id, 'Admin' => Session::Get('loggedin')->username));
+                            $this->logger->info("Job Notification Email was sent to customer.", Helper::AppendLoggedin(['job_id' => $repair->job_id, 'Customer' => $cutomer_details->lastName]));
+                            Helper::CustomerLogger($repair->user_id)->info("Job Notification Email was sent to customer", Helper::AppendLoggedin(['job_id' => $repair->job_id]));
                         } else {
                             throw new \Exception();
                         }
                     } catch (\Exception $e) {
-                        $this->logger->error("Failed to send job notification email to customer!", array('customer_id' => $cutomer_details->id, 'job_id' => $repair->job_id, 'Admin' => Session::Get('loggedin')->username));
+                        $this->logger->error("Failed to send job notification email to customer!", Helper::AppendLoggedin(['customer_id' => $cutomer_details->id, 'job_id' => $repair->job_id]));
+                        Helper::CustomerLogger($repair->user_id)->error("Failed to send job notification email to customer!", Helper::AppendLoggedin(['customer_id' => $cutomer_details->id, 'job_id' => $repair->job_id]));
                     }
                 }
 
                 if ($repair->smsUpdates == 1) {
-                    $message = "Hello ".$cutomer_details->firstName.", 
-                             Repair job was created successfully.
-                             To check your job please visit: https://cyw.repair/".$repair->job_id."
-                             Compute Your World";
+                    $message = "Hello ".$cutomer_details->firstName.", Repair job was created successfully. To check your job please visit: https://cyw.repair/".$repair->job_id." Compute Your World";
 
                     $sendResponse = $this->SendSMS($message, $cutomer_details->phone);
 
                     if ($sendResponse){
-                        $this->logger->info('SMS notification about job creation sent successfully to customer: '. $cutomer_details->lastName, array('Job_id: ' => $repair->job_id));
+                        $this->logger->info('SMS notification about job creation sent successfully to customer', Helper::AppendLoggedin(['Job_id: ' => $repair->job_id, 'customer' => $cutomer_details->lastName]));
+                        Helper::CustomerLogger($repair->user_id)->info('SMS notification about job creation sent successfully to customer', Helper::AppendLoggedin(['Job_id: ' => $repair->job_id]));
                     } else {
-                        $this->logger->error('Failed to send sms notification about job creation to customer: '. $cutomer_details->lastName, array('Job_id: ' => $repair->job_id));
+                        $this->logger->error('Failed to send sms notification about job creation to customer', Helper::AppendLoggedin(['Job_id: ' => $repair->job_id, 'customer' => $cutomer_details->lastName]));
+                        Helper::CustomerLogger($repair->user_id)->error('Failed to send sms notification about job creation to customer', Helper::AppendLoggedin(['Job_id: ' => $repair->job_id]));
                     }
                 }
 
                 Helper::SetFeedback('success', 'Repair Job was created successfully.');
-                $this->logger->info("Repair Job (ID: $repair->job_id) was created successfully ", array('Job ID' => $repair->job_id, 'Admin' => Session::Get('loggedin')->username));
+                $this->logger->info("Repair Job was created successfully ", Helper::AppendLoggedin(['Job ID' => $repair->job_id]));
+                Helper::CustomerLogger($repair->user_id)->info("Repair Job was created successfully.", Helper::AppendLoggedin(['Job ID' => $repair->job_id]));
 
                 header("location: " . HOST_NAME . 'admin/job_edit/' . $repair->id);
             } else {
                 Helper::SetFeedback('error', "Failed to create repair job. Please try again later.");
-                $this->logger->error("Failed to create new repair job, Unknowing reason", array('Admin' => Session::Get('loggedin')->username));
+
+                $this->logger->error("Failed to create new repair job, Unknowing error", Helper::AppendLoggedin());
+                Helper::CustomerLogger($repair->user_id)->error("Failed to create new repair job, Unknowing error", Helper::AppendLoggedin());
             }
         }
 
@@ -348,7 +350,6 @@ class AdminController extends AbstractController
                     $mail->to_name = $technician->firstName.' '.$technician->lastName;
                     $mail->subject = "New Job Notification";
                     $mail->message = $template;
-                    $mail->alt_message = $template;
 
                     if ($mail->Send()) {
                         $this->logger->info("New Job Notification Email was sent to technician $technician->lastName Regarding Job ID: $o_repair->job_id ", array('job_id' => $o_repair->job_id));
@@ -456,7 +457,6 @@ class AdminController extends AbstractController
                                 $mail->to_name = $company->name;
                                 $mail->subject = "Insurance Report";
                                 $mail->message = $template;
-                                $mail->alt_message = $template;
                                 $mail->attachment = array(INSURANCE_REPORTS_PATH.$document);
 
                                 if ($mail->Send()) {
@@ -718,7 +718,6 @@ class AdminController extends AbstractController
                                             $mail->to_name = $cutomer_details->firstName.' '.$cutomer_details->lastName;
                                             $mail->subject = "Job Notification";
                                             $mail->message = $template;
-                                            $mail->alt_message = $template;
 
                                             if ($mail->Send()) {
                                                 $this->logger->info("Job Notification Email was sent to customer $cutomer_details->lastName Regarding Job ID: $updated_repair->job_id ", array('job_id' => $updated_repair->job_id, 'Admin' => Session::Get('loggedin')->username));
@@ -819,7 +818,6 @@ class AdminController extends AbstractController
                                 $mail->to_name = $technician->firstName.' '.$technician->lastName;
                                 $mail->subject = "New Job Notification";
                                 $mail->message = $template;
-                                $mail->alt_message = $template;
 
                                 if ($mail->Send()) {
                                     $this->logger->info("New Job Notification Email was sent to technician $technician->lastName Regarding Job ID: $old_repair->job_id ", array('job_id' => $old_repair->job_id));
@@ -910,7 +908,6 @@ class AdminController extends AbstractController
                         $mail->to_name = $technician->firstName.' '.$technician->lastName;
                         $mail->subject = "Job Notification, Quote Approved by Admin";
                         $mail->message = $template;
-                        $mail->alt_message = $template;
 
                         if ($mail->Send()) {
                             $this->logger->info("Job Notification Email was sent to technician $technician->lastName about quote approval.", array('job_id' => $repair->job_id, 'admin' => Session::Get('loggedin')->username));
@@ -1042,7 +1039,6 @@ class AdminController extends AbstractController
                             $mail->to_name = $cutomer_details->firstName.' '.$cutomer_details->lastName;
                             $mail->subject = "Job Notification, New Note was Added";
                             $mail->message = $template;
-                            $mail->alt_message = $template;
 
                             if ($mail->Send()) {
                                 $this->logger->info("Job Notification Email was sent to customer $cutomer_details->lastName about new note.", array('job_id' => $repair->job_id, 'Admin' => Session::Get('loggedin')->username));
@@ -1588,9 +1584,9 @@ class AdminController extends AbstractController
         $this->RenderPos();
     }
 
-    public function LogAction($logs_name = '')
+    public function LogAction($logs_name = 'jobs')
     {
-        $logs_stream = $logs_name ? LoggerModel::getLogStream($logs_name) : $this->_logs_stream;
+        $logs_stream = LoggerModel::getLogStream($logs_name);
         $data = (file_exists($logs_stream)) ? file_get_contents($logs_stream) : null;
         $data = explode('*', $data);
         $data = array_reverse($data);

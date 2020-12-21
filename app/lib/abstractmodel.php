@@ -17,9 +17,7 @@ class AbstractModel
 
 	public function __construct()
     {
-        $loggerModel = new LoggerModel('database');
-        $logger = $loggerModel->InitializeLogger();
-        $this->logger = $logger['logger'];
+        $this->logger = LoggerModel::Instance('database')->InitializeLogger();
     }
 
     ##### BuildSQLstring ##########
@@ -66,6 +64,10 @@ class AbstractModel
 	##########################
 	private function Create(): bool
     {
+        if (!self::BuildSQLstring()) {
+            return false;
+        }
+
 		$sql = 'INSERT INTO ' . static::$tableName . ' SET ' . self::BuildSQLstring();
         $stmt = self::$db->prepare($sql);
         $this->PrepareValues($stmt);
@@ -87,6 +89,10 @@ class AbstractModel
     ###########################
     private function Update(): bool
     {
+        if (!self::BuildSQLstring()) {
+            return false;
+        }
+
         $sql = 'UPDATE ' . static::$tableName . ' SET ' . self::BuildSQLstring() . ' WHERE ' . static::$pk . ' = ' . $this->{static::$pk};
         $stmt = self::$db->prepare($sql);
         $this->PrepareValues($stmt);

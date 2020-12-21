@@ -7,10 +7,12 @@ namespace Framework\controllers;
 use Framework\lib\AbstractController;
 use Framework\lib\FilterInput;
 use Framework\lib\Helper;
+use Framework\lib\LoggerModel;
 use Framework\lib\Redirect;
 use Framework\lib\Request;
 use Framework\Lib\Session;
 use Framework\models\CustomersModel;
+use Framework\models\licenses\Digital_licenses_assignModel;
 use Framework\models\pos\DiscountsModel;
 use Framework\models\pos\Sales_paymentsModel;
 use Framework\models\pos\SalesModel;
@@ -40,8 +42,14 @@ class CustomersController extends AbstractController
     {
         $id = ($this->_params) != null ? $this->_params[0] : false;
         if ($id !== false) {
+            $customer = CustomersModel::getCustomers("WHERE users.id = '$id'", true);
             $customer_sales = SalesModel::getAllSales("WHERE sales.customer_id = '$id'");
             $customer_sales_items = SalesModel::getCustomerSalesItems($id);
+
+
+            $logs_stream = LoggerModel::getLogStream($id, 'customers');
+            $logs = (file_exists($logs_stream)) ? file_get_contents($logs_stream) : null;
+            $logs = array_reverse(explode('*', $logs));
 
             $totals = array();
             $original_subtotal = $discounts = $sub_total = $cost = 0;
@@ -67,11 +75,14 @@ class CustomersController extends AbstractController
             }
 
             $this->RenderPos([
-                'customer' => CustomersModel::getCustomers("WHERE users.id = '$id'", true),
+                'customer' => $customer,
                 'discounts' => DiscountsModel::getAll(),
                 'sales' => $customer_sales,
                 'sales_totals' => $totals ? (Object)$totals : $totals,
-                'sales_payments' => Sales_paymentsModel::getCustomerSalesPayments($id)
+                'sales_payments' => Sales_paymentsModel::getCustomerSalesPayments($id),
+                'quotes' => QuotesModel::getQuotes("WHERE customer_id = '$customer->customer_id'"),
+                'logs' => $logs,
+                'licenses' => Digital_licenses_assignModel::getCustomerLicenses("WHERE digital_licenses_assign.customer_id = '$customer->customer_id' GROUP BY digital_licenses_assign.id")
             ]);
         }
     }
@@ -106,10 +117,17 @@ class CustomersController extends AbstractController
                 if ($customer->Save()) {
                     Helper::SetFeedback('success', "Customer was created successfully.");
                     $this->logger->info("New customer was created", Helper::AppendLoggedin(['Customer: ' => $user->firstName.' '.$user->lastName]));
+                    LoggerModel::Instance($user->id, 'customers')
+                        ->InitializeLogger()
+                        ->info('New customer was created.', Helper::AppendLoggedin());
+
                     Redirect::To('customers/customers');
                 } else {
                     Helper::SetFeedback('error', "Failed to create new customer!");
                     $this->logger->error("Failed to create new customer. Customer error.", Helper::AppendLoggedin(['Customer: ' => $user->firstName.' '.$user->lastName]));
+                    LoggerModel::Instance($user->id, 'customers')
+                        ->InitializeLogger()
+                        ->info('New customer was created.', Helper::AppendLoggedin());
                 }
             } else {
                 Helper::SetFeedback('error', "Failed to create new customer!");
@@ -155,15 +173,28 @@ class CustomersController extends AbstractController
 
                     if ($customer->Save()) {
                         Helper::SetFeedback('success', "Customer was updated successfully.");
+
                         $this->logger->info("Customer was updated", Helper::AppendLoggedin(['Customer: ' => $user->firstName . ' ' . $user->lastName]));
-                        Redirect::To('customers/customers_list');
+                        LoggerModel::Instance($user->id, 'customers')
+                            ->InitializeLogger()
+                            ->info('Customer was updated.', Helper::AppendLoggedin());
+
+                        Redirect::To('customers/customers');
                     } else {
                         Helper::SetFeedback('error', "Failed to updated customer!");
+
                         $this->logger->error("Failed to updated customer. Customer error.", Helper::AppendLoggedin(['Customer: ' => $user->firstName . ' ' . $user->lastName]));
+                        LoggerModel::Instance($user->id, 'customers')
+                            ->InitializeLogger()
+                            ->error("Failed to updated customer. Customer error.", Helper::AppendLoggedin());
                     }
                 } else {
                     Helper::SetFeedback('error', "Failed to updated customer!");
+
                     $this->logger->error("Failed to updated customer. User error.", Helper::AppendLoggedin(['Customer: ' => $user->firstName . ' ' . $user->lastName]));
+                    LoggerModel::Instance($user->id, 'customers')
+                        ->InitializeLogger()
+                        ->error("Failed to updated customer. User error.", Helper::AppendLoggedin());
                 }
             }
 

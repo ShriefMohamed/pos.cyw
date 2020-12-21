@@ -101,4 +101,19 @@ class Digital_licenses_assignModel extends AbstractModel
                 WHERE digital_licenses_assign.id = '$license_assign_id'";
         return parent::getSQL($sql, '', true);
     }
+
+    public static function getLicenseAssign($license_assign_id)
+    {
+        $sql = "SELECT digital_licenses_assign.*,
+                    items.item,
+                    users.id AS user_id, users.firstName, users.lastName, users.email, users.phone,
+                    customers.id AS customer_id, customers.address, customers.address2, 
+                    customers.city, customers.suburb, customers.zip, customers.licensesNotifications
+                FROM digital_licenses_assign
+                LEFT JOIN items ON digital_licenses_assign.product_id = items.id
+                LEFT JOIN customers ON digital_licenses_assign.customer_id = customers.id
+                LEFT JOIN users ON customers.user_id = users.id
+                WHERE digital_licenses_assign.id = '$license_assign_id'";
+        return parent::getSQL($sql, '', true);
+    }
 }

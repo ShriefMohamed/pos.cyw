@@ -54,6 +54,7 @@
                                                                                         <li>product_name</li>
                                                                                         <li>license_code</li>
                                                                                         <li>expiration_period (i.e. 3 years and 6 months)</li>
+                                                                                        <li>expiration_period_in_days (i.e. 20 Days)</li>
                                                                                         <li>expiration_date (i.e. 25-03-2020)</li>
                                                                                     </ul>
                                                                                 </div>

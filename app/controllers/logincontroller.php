@@ -7,6 +7,7 @@ use Framework\Lib\AbstractController;
 use Framework\lib\Cipher;
 use Framework\lib\FilterInput;
 use Framework\lib\Helper;
+use Framework\lib\LoggerModel;
 use Framework\lib\MailModel;
 use Framework\lib\Request;
 use Framework\Lib\Session;
@@ -36,7 +37,14 @@ class LoginController extends AbstractController
                     header("location: " . HOST_NAME . 'login/checkpoint/send');
                 } else {
                     Session::Set('loggedin', $authenticate);
-                    $this->logger->info('New Login', array('Username: ' => $authenticate->username));
+
+                    $this->logger->info('New Login', array('Username: ' => $authenticate->username, 'Role' => ucfirst($authenticate->role)));
+                    if ($authenticate->role == 'customer') {
+                        LoggerModel::Instance($authenticate->id, 'customers')
+                            ->InitializeLogger()
+                            ->info('Customer Login!');
+                    }
+
                     header("location: " . HOST_NAME . $authenticate->role);
                 }
             } else {
@@ -51,10 +59,13 @@ class LoginController extends AbstractController
             $user = UsersModel::getAll(" WHERE email = '$userEmail' ", true);
             if ($user) {
                 $this->logger->info('Reset Password Requested', array('username' => $user->username));
+                if ($user->role == 'customer') {
+                    LoggerModel::Instance($user->id, 'customers')
+                        ->InitializeLogger()
+                        ->info('Customer requested a reset password email!');
+                }
 
                 $resetMessage = $this->GenerateRecoverEmail($user);
-                var_dump($resetMessage);
-
 
                 if ($resetMessage) {
                     try {
@@ -65,21 +76,36 @@ class LoginController extends AbstractController
                         $mail->to_name = $user->firstName . ' ' . $user->lastName;
                         $mail->subject = 'Reset Password Request';
                         $mail->message = $resetMessage;
-                        $mail->alt_message = $resetMessage;
 
                         if ($mail->Send()) {
                             Session::Set('messages', array('success', "An email with the reset link was sent to you, Don't forget to check your spam if you didn't find the email in your inbox!"));
+
                             $this->logger->info('Reset Password Email Sent', array('username' => $user->username));
+                            if ($user->role == 'customer') {
+                                LoggerModel::Instance($user->id, 'customers')
+                                    ->InitializeLogger()
+                                    ->info('Reset Password Email Sent to customer');
+                            }
                         } else {
                             throw new \Exception();
                         }
                     } catch (\Exception $e) {
                         Session::Set('messages', array('error', "Sorry, We couldn't send an email with the reset link at the moment! Please try again later or contact support."));
-                        $this->logger->error("Failed to send reset password email", array('username' => $user->username, 'error: ' => $e->getMessage()));
+                        $this->logger->error("Failed to send reset password email", array('username' => $user->username, 'error' => $e->getMessage()));
+                        if ($user->role == 'customer') {
+                            LoggerModel::Instance($user->id, 'customers')
+                                ->InitializeLogger()
+                                ->error('Failed to send reset password email.', ['error' => $e->getMessage()]);
+                        }
                     }
                 } else {
                     Session::Set('messages', array('error', "Sorry, We couldn't send an email with the reset link at the moment! Please try again later or contact support."));
-                    $this->logger->error("Failed to send reset password email", array('username' => $user->username, 'error: ' => 'Couldn\'t generate reset email!'));
+                    $this->logger->error("Failed to send reset password email", array('username' => $user->username, 'error' => 'Couldn\'t generate reset email!'));
+                    if ($user->role == 'customer') {
+                        LoggerModel::Instance($user->id, 'customers')
+                            ->InitializeLogger()
+                            ->error('Failed to send reset password email.', ['Error' => 'Couldn\'t generate reset email!']);
+                    }
                 }
             } else {
                 Session::Set('messages', array('error', "Sorry, We couldn't find any user associated with your email address"));
@@ -214,10 +240,22 @@ class LoginController extends AbstractController
                                     $userTokenR->Save();
 
                                     $this->logger->info("Password was recovered successfully", array('username' => $userObj->username));
-                                    Session::Set('messages', array('success', "You new password was saved successfully."));
+                                    if ($userObj->role == 'customer') {
+                                        LoggerModel::Instance($userObj->id, 'customers')
+                                            ->InitializeLogger()
+                                            ->info('Password was recovered successfully');
+                                    }
+
+                                    Session::Set('messages', array('success', "You new password was updated successfully."));
                                     header('location: ' . HOST_NAME . 'login');
                                 } else {
                                     $this->logger->error("Error recovering password, Unknown saving issue.", array('username' => $userObj->username));
+                                    if ($userObj->role == 'customer') {
+                                        LoggerModel::Instance($userObj->id, 'customers')
+                                            ->InitializeLogger()
+                                            ->error("Error recovering password", ['error' => 'Unknown saving issue.']);
+                                    }
+
                                     Session::Set('messages', array('error', "Couldn't save your new password, some unknown error happened!"));
                                 }
                             } else {

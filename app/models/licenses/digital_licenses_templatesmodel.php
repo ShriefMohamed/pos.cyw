@@ -9,7 +9,7 @@ use Framework\lib\AbstractModel;
 class Digital_licenses_templatesModel extends AbstractModel
 {
     public $id;
-    public $template_name;
+    public $template_name; // subscription-about-to-expire, Subscription-expired
     public $template;
     public $created;
 

@@ -23,10 +23,12 @@
 
 <?php if ($this->controller == 'quotes') : ?>
     <script src="<?= JS_DIR ?>quotes.js"></script>
+    <script src="<?= JS_DIR ?>customers-search_autocomplete.js"></script>
 <?php endif; ?>
 
 <?php if ($this->controller == 'licenses') : ?>
     <script src="<?= JS_DIR ?>licenses.js"></script>
+    <script src="<?= JS_DIR ?>customers-search_autocomplete.js"></script>
 <?php endif; ?>
 
 
@@ -135,20 +137,25 @@
             var $this = $(this);
             var id = $this.data('id');
             var action = $this.data('classname');
+            var extra_action = $this.data('extra-action');
 
             $.ajax({
                 type: "POST",
-                url: "/ajax/delete/"+id+"?target="+action,
-                data: '',
+                url: "/ajax/delete/"+id,
+                data: {target: action, extra_action: extra_action},
                 dataType: 'json',
                 beforeSend: function () {
                     Pace.restart();
                 },
-                success: function (data) {
-                    if (data.status == '1') {
-                        $this.closest('.gradeX').remove();
+                complete: function (xhr) {
+                    if (xhr.responseJSON) {
+                        if (xhr.responseJSON.status === 1) {
+                            $this.closest('.gradeX').remove();
+                        } else {
+                            showFeedback('error', xhr.responseJSON.msg);
+                        }
                     } else {
-                        showFeedback('error', data.msg);
+                        showFeedback('error', xhr.responseText);
                     }
                 },
                 fail: function (err) {

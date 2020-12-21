@@ -30,21 +30,15 @@ class MailModel
     public $to;
     public $reply_to_email;
     public $reply_to_name;
-    public $is_cc = false;
-    public $cc;
-    public $is_bcc = false;
-    public $bcc;
-    public $attachment = array();
+    public $cc = [];
+    public $attachment = [];
     public $subject;
     public $message;
-    public $alt_message;
 
     public function __construct()
     {
         // Get logger.
-        $loggerModel = new LoggerModel('emails');
-        $logger = $loggerModel->InitializeLogger();
-        $this->logger = $logger['logger'];
+        $this->logger = LoggerModel::Instance('emails')->InitializeLogger();
 
         // Set smtp configurations
         $this->smtp_server = SMTP_SERVER;
@@ -143,23 +137,19 @@ class MailModel
                 $mail->addReplyTo($this->reply_to_email);
             }
 
-            // If CC, then set CC
-            if ($this->is_cc) {
-                if (is_array($this->cc)) {
-                    foreach ($this->cc as $key => $value) {
+            // CC
+            if ($this->cc && !empty($this->cc)) {
+                foreach ($this->cc as $key => $value) {
+                    if (is_array($value)) {
+                        foreach ($value as $key2 => $value2) {
+                            $mail->addCC($key2, $value2);
+                        }
+                    } else {
                         $mail->addCC($key, $value);
                     }
                 }
             }
 
-            // If BCC, then set BCC
-            if ($this->is_bcc) {
-                if (is_array($this->bcc)) {
-                    foreach ($this->bcc as $key => $value) {
-                        $mail->addBCC($key, $value);
-                    }
-                }
-            }
 
             // If attachment, then set attachment's path
             if (!empty($this->attachment)) {
@@ -180,14 +170,10 @@ class MailModel
             // If message, Set body
             if ($this->message) {
                 $mail->Body = $this->message;
+                $mail->AltBody = html_entity_decode($this->message);
             } else {
                 $this->logger->error("Can't send email, No message.");
                 throw new \Exception("Can't send email, No message.");
-            }
-
-            // If alt message, Set AltBody
-            if ($this->alt_message) {
-                $mail->AltBody = $this->alt_message;
             }
 
             // If sent, log email info then return true.
@@ -197,6 +183,7 @@ class MailModel
 
             $logMessage = "Email sent successfully. ";
             $logMessage .= "From: ".$this->from_name." <".$this->from_email."> ";
+
             if ($this->to) {
                 foreach ($this->to as $_to_email => $_to_name) {
                     $logMessage .= "To: ".$_to_name." <".$_to_email."> ";
@@ -204,20 +191,12 @@ class MailModel
             } else {
                 $logMessage .= "To: ".$this->to_name." <".$this->to_email."> ";
             }
-            if ($this->is_cc) {
-                if (is_array($this->cc)) {
-                    foreach ($this->cc as $_cc_email => $_cc_name) {
-                        $logMessage .= "CC: ".$_cc_name." <".$_cc_email."> ";
-                    }
-                } else {
-                    $logMessage .= "CC: <".$this->cc."> ";
+            if (!empty($this->cc)) {
+                foreach ($this->cc as $_cc_email => $_cc_name) {
+                    $logMessage .= "CC: ".$_cc_name." <".$_cc_email."> ";
                 }
             }
-            if ($this->is_bcc) {
-                $logMessage .= "BCC: <".$this->bcc."> ";
-            }
-            $with_attachment = !empty($this->attachment) ? "Yes" : "No";
-            $logMessage .= "Includes attachment: ".$with_attachment;
+            $logMessage .= "Includes attachment: ".(!empty($this->attachment) ? "Yes" : "No");
 
             $this->logger->info($logMessage);
             return true;

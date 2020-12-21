@@ -6,7 +6,7 @@ namespace Framework\lib;
 
 trait Helper
 {
-    public static function Hash($string)
+    public static function Hash($string): string
     {
         if ($string) {
             $cipher = new Cipher();
@@ -16,11 +16,13 @@ trait Helper
         }
     }
 
-    public static function AppendLoggedin($arr = []) {
+    public static function AppendLoggedin($arr = []): array
+    {
         return $arr += ["Admin" => Session::Get('loggedin')->username];
     }
 
-    public static function TimeElapsed($datetime, $full = false) {
+    public static function TimeElapsed($datetime, $full = false): string
+    {
         $now = new \DateTime;
         $ago = new \DateTime($datetime);
         $diff = $now->diff($ago);
@@ -76,7 +78,7 @@ trait Helper
         }
     }
 
-    public static function ReArrayFiles(&$file_post)
+    public static function ReArrayFiles(&$file_post): array
     {
         $file_ary = array();
         $file_count = count($file_post['name']);
@@ -96,7 +98,8 @@ trait Helper
         return $output[0];
     }
 
-    public static function sortArrayByArray(array $array, array $orderArray) {
+    public static function sortArrayByArray(array $array, array $orderArray): array
+    {
         $ordered = array();
         foreach ($orderArray as $key) {
             if (in_array($key, $array)) {
@@ -123,7 +126,8 @@ trait Helper
         }
     }
 
-    public static function CalculateUpcCheckDigit($upc_code) {
+    public static function CalculateUpcCheckDigit($upc_code): int
+    {
         $checkDigit = -1; // -1 == failure
         $upc = substr($upc_code,0,11);
         // send in a 11 or 12 digit upc code only
@@ -161,5 +165,22 @@ trait Helper
     public static function SetFeedback($type, $feedback)
     {
         Session::Append('messages', ['type' => $type, 'message' => $feedback]);
+    }
+
+    public static function CustomerLogger($id): \Monolog\Logger
+    {
+        return LoggerModel::Instance($id, 'customers')->InitializeLogger();
+    }
+
+
+    public static function getLicenseExpirationPeriod($years, $months): string
+    {
+        $expiration_period = $years > 0 ? $years." Year".($years > 1 ? 's' : '') : "";
+        $expiration_period .= $months > 0
+            ? $expiration_period
+                ? " and ".$months." Month". ($months > 1 ? 's' : '')
+                : $months." Month".($months > 1 ? 's' : '')
+            : "";
+        return $expiration_period;
     }
 }

@@ -80,8 +80,9 @@ class LicensesController extends AbstractController
                     }
 
                     $licenses_saving_errors = false;
+
                     foreach ($licenses as $license) {
-                        if ($license) {
+                        if (strlen(trim($license)) > 0) {
                             $license_obj = new Digital_licensesModel();
                             $license_obj->item_id = $item_id;
                             $license_obj->license = $license;
@@ -94,6 +95,7 @@ class LicensesController extends AbstractController
                             }
                         }
                     }
+
                     if ($licenses_saving_errors) {
                         Helper::SetFeedback('error', "NOT ALL licenses were saved. check logs for specifics.");
                     } else {
@@ -125,13 +127,6 @@ class LicensesController extends AbstractController
 
             $selected_license = Digital_licensesModel::getLicensesWithItem("WHERE digital_licenses.id = '$selected_license_id'", true);
 
-
-            $expiration_period = $selected_license->expiration_years > 0 ? $selected_license->expiration_years." Year".($selected_license->expiration_years > 1 ? 's' : '') : "";
-            $expiration_period .= $selected_license->expiration_months > 0
-                ? $expiration_period
-                    ? " and ".$selected_license->expiration_months." Month". ($selected_license->expiration_months > 1 ? 's' : '')
-                    : $selected_license->expiration_months." Month".($selected_license->expiration_months > 1 ? 's' : '')
-                : "";
 
             $expiration_date = $selected_license->expiration_years > 0 ? date('d-m-Y', strtotime('+'.$selected_license->expiration_years.' years')) : date('d-m-Y');
             $expiration_date = $selected_license->expiration_months > 0 ? date('d-m-Y', strtotime($expiration_date.' +'.$selected_license->expiration_months.' months')) : $expiration_date;
@@ -181,13 +176,14 @@ class LicensesController extends AbstractController
                         if (file_exists(DIGITAL_LICENCES_TEMPLATES_PATH.$selected_template.'.html')) {
                             $variables = [
                                 'IMAGES' => EMAIL_IMAGES_DIR,
-                                'URL' => HOST_NAME,
+                                'URL' => HOST_NAME.'/index/unsubscribe',
 
                                 'first_name' => Request::Post('f_name'),
                                 'last_name' => Request::Post('l_name'),
                                 'product_name' => $selected_license->item,
                                 'license_code' => $selected_license->license,
-                                'expiration_period' => $expiration_period,
+                                'expiration_period' => Helper::getLicenseExpirationPeriod($selected_license->expiration_years, $selected_license->expiration_months),
+                                'expiration_period_in_days' => Helper::DateDiff(date('Y-m-d'), $expiration_date)->days,
                                 'expiration_date' => $expiration_date
                             ];
 
@@ -201,11 +197,9 @@ class LicensesController extends AbstractController
                             $mail->from_name = CONTACT_NAME;
                             $mail->to_email = $customer_data->email;
                             $mail->to_name = $customer_data->firstName.' '.$customer_data->lastName;
-                            $mail->is_cc = true;
                             $mail->cc = ["Compute Your World", "service@computeyourworld.com.au"];
                             $mail->subject = "Your License Code From Compute Your World";
                             $mail->message = $template;
-                            $mail->alt_message = html_entity_decode($template);
                             if ($mail->Send()) {
                                 $this->logger->info('Email was sent with license code successfully!', Helper::AppendLoggedin(['Product' => $selected_license->item, 'License' => $selected_license->license]));
                                 Helper::SetFeedback('success', "Email was sent with license code successfully!");
@@ -267,22 +261,19 @@ class LicensesController extends AbstractController
             $expiration_year = $selected_license->expiration_years;
             $expiration_month = $selected_license->expiration_months;
 
-            $expiration_period = $expiration_year > 0 ? $expiration_year." Year".($expiration_year > 1 ? 's' : '') : "";
-            $expiration_period .= $expiration_month > 0 ?
-                $expiration_period ? " and ".$expiration_month." Month".($expiration_month > 1 ? 's' : '') : $expiration_month." Month".($expiration_month > 1 ? 's' : '')
-                : "";
             $expiration_date = $expiration_year > 0 ? date('d-m-Y', strtotime('+'.$expiration_year.' years')) : date('d-m-Y');
             $expiration_date = $expiration_month > 0 ? date('d-m-Y', strtotime($expiration_date.' +'.$expiration_month.' months')) : $expiration_date;
 
             if (file_exists(DIGITAL_LICENCES_TEMPLATES_PATH.$selected_template.'.html')) {
                 $variables = array(
                     'IMAGES' => EMAIL_IMAGES_DIR,
-                    'URL' => HOST_NAME,
+                    'URL' => HOST_NAME.'/index/unsubscribe',
                     'first_name' => Request::Post('f_name'),
                     'last_name' => Request::Post('l_name'),
                     'product_name' => $selected_license->item,
                     'license_code' => $selected_license->license,
-                    'expiration_period' => $expiration_period,
+                    'expiration_period' => Helper::getLicenseExpirationPeriod($expiration_year, $expiration_month),
+                    'expiration_period_in_days' => Helper::DateDiff(date('Y-m-d'), $expiration_date)->days,
                     'expiration_date' => $expiration_date,
                 );
 
@@ -304,21 +295,17 @@ class LicensesController extends AbstractController
     {
         $assigned_license = Digital_licenses_assignModel::getSpecificLicenseAssignAllDetails($assign_id, $assigned_licenses_id);
         if ($assigned_license) {
-            $expiration_period = $assigned_license->expiration_years > 0 ? $assigned_license->expiration_years." Years " : "";
-            $expiration_period = $assigned_license->expiration_months > 0 ?
-                $expiration_period ? "and ".$assigned_license->expiration_months." Month".($assigned_license->expiration_months > 1 ? 's' : '') : $assigned_license->expiration_months." Month".($assigned_license->expiration_months > 1 ? 's' : '')
-                : "";
-
             // send email to customer & to services@cyw with the license.
             if (file_exists(DIGITAL_LICENCES_TEMPLATES_PATH.$assigned_license->template.'.html')) {
                 $variables = array(
                     'IMAGES' => EMAIL_IMAGES_DIR,
-                    'URL' => HOST_NAME,
+                    'URL' => HOST_NAME.'/index/unsubscribe',
                     'first_name' => $assigned_license->firstName,
                     'last_name' => $assigned_license->lastName,
                     'product_name' => $assigned_license->item,
                     'license_code' => $assigned_license->license,
-                    'expiration_period' => $expiration_period,
+                    'expiration_period' => Helper::getLicenseExpirationPeriod($assigned_license->expiration_years, $assigned_license->expiration_months),
+                    'expiration_period_in_days' => Helper::DateDiff(date('Y-m-d'), $assigned_license->expiration_date)->days,
                     'expiration_date' => date('d-m-Y', strtotime($assigned_license->expiration_date)),
                 );
 
@@ -332,11 +319,9 @@ class LicensesController extends AbstractController
                 $mail->from_name = CONTACT_NAME;
                 $mail->to_email = $assigned_license->email;
                 $mail->to_name = $assigned_license->firstName.' '.$assigned_license->lastName;
-                $mail->is_cc = true;
                 $mail->cc = ["Compute Your World", "service@computeyourworld.com.au"];
                 $mail->subject = "Your License Code From Compute Your World";
                 $mail->message = $template;
-                $mail->alt_message = html_entity_decode($template);
                 if ($mail->Send()) {
                     $this->logger->info('Email was re-sent with license code successfully!', Helper::AppendLoggedin(['Product' => $assigned_license->item, 'License' => $assigned_license->license]));
                     Helper::SetFeedback('success', "Email was re-sent with license code successfully!");
@@ -356,13 +341,9 @@ class LicensesController extends AbstractController
     public function License_renewAction($assign_id)
     {
         $assign_record = Digital_licenses_assignModel::getLicenseAssignDetails($assign_id);
-
-        $product_templates = [];
-        $templates = Digital_licenses_templatesModel::getAll();
-        foreach ($templates as $template) {
-            if (in_array($assign_record->product_id, json_decode($template->products))) {
-                $product_templates[] = $template;
-            }
+        $expires_after = Helper::DateDiff(date('Y-m-d'), $assign_record->expiration_date)->days;
+        if ($expires_after) {
+            Helper::SetFeedback('warning', "Existing assigned license expires after: $expires_after Days.");
         }
 
         $license = Digital_licensesModel::getAll("WHERE item_id = '$assign_record->product_id' && used != '1' && expired != '1'", true);
@@ -370,21 +351,19 @@ class LicensesController extends AbstractController
             Helper::SetFeedback('error', "There's no available licenses for this product!");
         }
 
+        $product_templates = [];
+        $templates = array_column(Digital_licenses_templatesModel::getAll(), 'template_name');
+        if (in_array($assign_record->template, $templates) &&
+            file_exists(DIGITAL_LICENCES_TEMPLATES_PATH.$license->template.'.html')
+        ) {
+            $product_templates[] = $license->template;
+        }
 
         if (Request::Check('save')) {
             $selected_template = Request::Post('email-template');
 
-            $expiration_year = Request::Post('expiration-year');
-            $expiration_month = Request::Post('expiration-month');
-
-            $expiration_period = $expiration_year > 0 ? $expiration_year." Years " : "";
-            $expiration_period = $expiration_month > 0 ?
-                $expiration_period ? "and ".$expiration_month." Month".($expiration_month > 1 ? 's' : '') : $expiration_month." Month".($expiration_month > 1 ? 's' : '')
-                : "";
-
-            $expiration_date = $expiration_year > 0 ? date('d-m-Y', strtotime('+'.$expiration_year.' years')) : date('d-m-Y');
-            $expiration_date = $expiration_month > 0 ? date('d-m-Y', strtotime($expiration_date.' +'.$expiration_month.' months')) : $expiration_date;
-
+            $expiration_date = $license->expiration_years > 0 ? date('d-m-Y', strtotime('+'.$license->expiration_years.' years')) : date('d-m-Y');
+            $expiration_date = $license->expiration_months > 0 ? date('d-m-Y', strtotime($expiration_date.' +'.$license->expiration_months.' months')) : $expiration_date;
 
             $license_assign = new Digital_licenses_assignModel();
             $license_assign->id = $assign_record->id;
@@ -401,8 +380,8 @@ class LicensesController extends AbstractController
                 $license_assign_license->license_assign_id = $assign_record->id;
                 $license_assign_license->license_id = $license->id;
                 $license_assign_license->license = $license->license;
-                $license_assign_license->expiration_years = $expiration_year;
-                $license_assign_license->expiration_months = $expiration_month;
+                $license_assign_license->expiration_years = $license->expiration_years;
+                $license_assign_license->expiration_months = $license->expiration_months;
                 $license_assign_license->expiration_date = $expiration_date ? date('Y-m-d', strtotime($expiration_date)) : date('Y-m-d');
                 if ($license_assign_license->Save()) {
                     $this->logger->info("License was renewed successfully.", Helper::AppendLoggedin(['License assign ID' => $assign_record->id]));
@@ -430,12 +409,13 @@ class LicensesController extends AbstractController
                     if (file_exists(DIGITAL_LICENCES_TEMPLATES_PATH.$selected_template.'.html')) {
                         $variables = array(
                             'IMAGES' => EMAIL_IMAGES_DIR,
-                            'URL' => HOST_NAME,
+                            'URL' => HOST_NAME.'/index/unsubscribe',
                             'first_name' => $assign_record->firstName,
                             'last_name' => $assign_record->lastName,
                             'product_name' => $assign_record->item,
                             'license_code' => $license->license,
-                            'expiration_period' => $expiration_period,
+                            'expiration_period' => Helper::getLicenseExpirationPeriod($license->expiration_years, $license->expiration_months),
+                            'expiration_period_in_days' => Helper::DateDiff(date('Y-m-d'), $expiration_date)->days,
                             'expiration_date' => $expiration_date
                         );
 
@@ -449,11 +429,9 @@ class LicensesController extends AbstractController
                         $mail->from_name = CONTACT_NAME;
                         $mail->to_email = $assign_record->email;
                         $mail->to_name = $assign_record->firstName.' '.$assign_record->lastName;
-                        $mail->is_cc = true;
                         $mail->cc = ["Compute Your World", "service@computeyourworld.com.au"];
                         $mail->subject = "Your License Code From Compute Your World";
                         $mail->message = $template;
-                        $mail->alt_message = html_entity_decode($template);
                         if ($mail->Send()) {
                             $this->logger->info('Email was sent with renewal license code successfully!', Helper::AppendLoggedin(['Product' => $assign_record->item, 'License' => $license->license]));
                             Helper::SetFeedback('success', "Email was sent with renewal license code successfully!");
@@ -498,7 +476,7 @@ class LicensesController extends AbstractController
             if ($_POST['template']) {
                 $template_content = $_POST['template'];
 
-                $base_template = file_get_contents(DIGITAL_LICENCES_TEMPLATES_PATH.'digital-licenses-base-template.html');
+                $base_template = file_get_contents(EMAIL_TEMPLATES_PATH.'base-template.html');
                 $base_template = str_replace('{{TEMPLATE}}', $template_content, $base_template);
 
                 if (file_put_contents(DIGITAL_LICENCES_TEMPLATES_PATH.$original_template->template_name.'.html', $base_template)) {
@@ -534,19 +512,23 @@ class LicensesController extends AbstractController
                 $template_content = $_POST['template'];
 
 
-                $base_template = file_get_contents(EMAIL_TEMPLATES_PATH.'base-template.html');
-                $base_template = str_replace('{{TEMPLATE}}', $template_content, $base_template);
+                if (!file_exists(DIGITAL_LICENCES_TEMPLATES_PATH.$template_name.'.html')) {
+                    $base_template = file_get_contents(EMAIL_TEMPLATES_PATH.'base-template.html');
+                    $base_template = str_replace('{{TEMPLATE}}', $template_content, $base_template);
 
-                if (file_put_contents(DIGITAL_LICENCES_TEMPLATES_PATH.$template_name.'.html', $base_template)) {
-                    $template = new Digital_licenses_templatesModel();
-                    $template->template_name = $template_name;
-                    $template->template = $template_content;
-                    if ($template->Save()) {
-                        Helper::SetFeedback('success', "Template was saved successfully.");
-                        Redirect::To('licenses/templates');
+                    if (file_put_contents(DIGITAL_LICENCES_TEMPLATES_PATH.$template_name.'.html', $base_template)) {
+                        $template = new Digital_licenses_templatesModel();
+                        $template->template_name = $template_name;
+                        $template->template = $template_content;
+                        if ($template->Save()) {
+                            Helper::SetFeedback('success', "Template was saved successfully.");
+                            Redirect::To('licenses/templates');
+                        }
+                    } else {
+                        Helper::SetFeedback('error', "Failed to write template.");
                     }
                 } else {
-                    Helper::SetFeedback('error', "Failed to write template.");
+                    Helper::SetFeedback('error', "Failed to write template, a file with the same name exists.");
                 }
             } else {
                 Helper::SetFeedback('error', "Failed to write template, template text box seems to be empty!");
@@ -561,7 +543,7 @@ class LicensesController extends AbstractController
         $template = !$template ? EMAIL_TEMPLATES_PATH.'base-template.html' : DIGITAL_LICENCES_TEMPLATES_PATH.$template.'.html';
         if (file_exists($template)) {
             $template = file_get_contents($template);
-            $variables = ['IMAGES' => EMAIL_IMAGES_DIR, 'URL' => HOST_NAME];
+            $variables = ['IMAGES' => EMAIL_IMAGES_DIR, 'URL' => HOST_NAME.'/index/unsubscribe',];
             foreach ($variables as $key => $value) {
                 $template = str_replace('{'.$key.'}', $value, $template);
             }

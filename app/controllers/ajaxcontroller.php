@@ -251,6 +251,17 @@ class AjaxController extends AbstractController
     }
 
 
+    private function Digital_licenses_template_delete($obj)
+    {
+        if ($obj) {
+            if (unlink(DIGITAL_LICENCES_TEMPLATES_PATH.$obj->template_name.'.html')) {
+                $this->logger->info("Email template file was deleted successfully.", ['Template Name' => $obj->template_name]);
+            } else {
+                $this->logger->error("Failed to delete email template file. delete manually.", ['Template Name' => $obj->template_name]);
+            }
+        }
+    }
+
 
 
     /* Fetch */
@@ -1006,12 +1017,14 @@ class AjaxController extends AbstractController
     public function get_licenses_by_customerAction($customer_id)
     {
         $type = Request::Check('type') ? Request::Post('type') : '';
-        $where = '';
+        $where = "WHERE digital_licenses_assign.customer_id = '$customer_id'";
         if ($type) {
-            $where = "WHERE digital_licenses_assigned_licenses.license_status = '$type' ";
-            $where .= $type == 'expired' ? "&& digital_licenses_assign.status = 'expired' " : " && digital_licenses_assign.status != 'expired'";
-            $where .= "GROUP BY digital_licenses_assign.id";
+            $where .= " && digital_licenses_assigned_licenses.license_status = '$type' ";
+            $where .= $type == 'expired'
+                ? " && digital_licenses_assign.status = 'expired' "
+                : " && digital_licenses_assign.status != 'expired' ";
         }
+        $where .= " GROUP BY digital_licenses_assign.id";
         die(json_encode(Digital_licenses_assignModel::getCustomerLicenses($where)));
     }
 /* Licenses System */
@@ -1028,19 +1041,26 @@ class AjaxController extends AbstractController
 
     public function DeleteAction($id)
     {
-        $class = Request::Check('target', 'get') ? '\Framework\models\\'.Request::Get('target').'Model' : '';
+        $class = Request::Check('target') ? '\Framework\models\\'.Request::Post('target').'Model' : '';
+        $extra_action = Request::Check('extra_action') ? Request::Post('extra_action') : '';
+
         if (class_exists($class)) {
+            if ($extra_action) {
+                $object = $class::getOne($id);
+                $this->$extra_action($object);
+            }
+
             $item = new $class;
             $item->id = $id;
             if ($item->Delete()) {
-                $this->logger->info("Item was deleted successfully.", Helper::AppendLoggedin(['Class Name' => Request::Get('target')]));
+                $this->logger->info("Item was deleted successfully.", Helper::AppendLoggedin(['Class Name' => Request::Post('target')]));
                 $response = ['status' => 1];
             } else {
-                $this->logger->error("Failed to delete item.", Helper::AppendLoggedin(['Class Name' => Request::Get('target')]));
+                $this->logger->error("Failed to delete item.", Helper::AppendLoggedin(['Class Name' => Request::Post('target')]));
                 $response = ['status' => 0, 'msg' => "Failed to delete item!"];
             }
         } else {
-            $this->logger->error("Failed to delete item. Class doesn't exist!", Helper::AppendLoggedin(['Class Name' => Request::Get('target')]));
+            $this->logger->error("Failed to delete item. Class doesn't exist!", Helper::AppendLoggedin(['Class Name' => Request::Post('target')]));
             $response = ['status' => 0, 'msg' => "Failed to delete item!"];
         }
 
