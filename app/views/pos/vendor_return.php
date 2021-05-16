@@ -214,14 +214,14 @@
                                                         </span>
                                                     </td>
 
-                                                    <td class="cr-table__body-cell cr-text-left cr-table__body-cell--normal display_purchase_order" style="width: 8rem; vertical-align: middle; padding-top: 0.375rem; padding-bottom: 0.375rem;">
+                                                    <td class="cr-table__body-cell cr-text-left cr-table__body-cell--normal display_purchase_order" data-type="vr" style="width: 8rem;">
                                                         <?php if ($order_item->purchase_order_item_id && $order_item->purchase_order_item_id !== 0) : ?>
-                                                            <div class="dropright">
-                                                                <div role="button" class="css-153ki3p ertzig70 dropdown-toggle" id="dropdown-btn-<?= $order_item->item_id ?>" data-toggle="dropdown" aria-haspopup="true">24
-                                                                    <input type="hidden" name="vr-items[<?= $order_item->item_id ?>][purchase_order_item_id]" value="7">
+                                                            <div class="dropright" style="width: 2rem;cursor: pointer;">
+                                                                <div role="button" class="ertzig70 dropdown-toggle" id="dropdown-btn-<?= $order_item->item_id ?>" data-toggle="dropdown" aria-haspopup="true"><?= $order_item->purchase_order_id ?>
+                                                                    <input type="hidden" name="vr-items[<?= $order_item->item_id ?>][purchase_order_item_id]" value="<?= $order_item->purchase_order_item_id ?>">
                                                                 </div>
                                                                 <div class="dropdown-menu" aria-labelledby="dropdown-btn-<?= $order_item->item_id ?>">
-                                                                    <a class="dropdown-item" target="_blank" href="/pos/purchase_order/<?= $order_item->purchase_order_item_id ?>"><i class="fa fa-edit"></i> View PO</a>
+                                                                    <a class="dropdown-item" target="_blank" href="/pos/purchase_order/<?= $order_item->purchase_order_id ?>"><i class="fa fa-edit"></i> View PO</a>
                                                                     <a class="dropdown-item associate-purchase-order-btn" href="#" data-item-id="<?= $order_item->item_id ?>"><i class="fa fa-redo-alt"></i> Select other PO</a>
                                                                     <a class="dropdown-item disassociate-purchase-order-btn" href="#" data-item-id="<?= $order_item->item_id ?>"><i class="fa fa-trash"></i> Remove PO</a>
                                                                 </div>
@@ -264,7 +264,7 @@
                                                             </label>
                                                         </div>
                                                     </td>
-                                                    <td class="cr-table__body-cell cr-text-right cr-text-right notranslate cr-table__body-cell--first cr-table__body-cell--normal" style="width: 8rem; vertical-align: middle;">
+                                                    <td class="cr-table__body-cell cr-text-right cr-text-right notranslate cr-table__body-cell--first cr-table__body-cell--normal" style="width: 8rem; vertical-align: middle;text-align: center">
                                                         <span class="notranslate display_line_subtotal">$<?= number_format($order_item->subtotal, 2) ?></span>
                                                     </td>
 

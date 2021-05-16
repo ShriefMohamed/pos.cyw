@@ -220,15 +220,12 @@ $(document).ready(function () {
 
         if (data.address) {
             address_input.val(data.address);
-            address_input.attr('disabled', true);
         }
         if (data.suburb) {
             suburb_input.val(data.suburb);
-            suburb_input.attr('disabled', true);
         }
         if (data.zip) {
             zip_input.val(data.zip);
-            zip_input.attr('disabled', true);
         }
     }
 });

@@ -11,12 +11,14 @@
             <div id="work_listing listing">
                 <div id="listing_loc_matches">
                     <div class="container" style="max-width: 100%">
+                        <?php if (isset($data) && $data !== false) : ?>
 
-                        <table cellpadding="0" cellspacing="0" border="0" class="g-datatable datatable table table-striped table-bordered table-status-colors">
+                        <table cellpadding="0" cellspacing="0" border="0" class="default-datatable datatable table table-striped table-bordered table-status-colors">
                             <thead>
                             <tr>
+                                <th>Archived</th>
                                 <th>Full Name</th>
-                                <th>Contact ID</th>
+                                <th>Xero ID</th>
                                 <th>Email</th>
                                 <th>Region</th>
                                 <th>Phone</th>
@@ -25,16 +27,16 @@
                             </tr>
                             </thead>
                             <tbody>
-                            <?php if (isset($data) && $data !== false) : ?>
-                                <?php foreach ($data as $item) : ?>
+                            <?php if (isset($data->data) && $data->data !== false) : ?>
+                                <?php foreach ($data->data as $item) : ?>
                                     <?php $item_status = $item->status != 'archived' ? 'status-green' : 'status-red'; ?>
 
                                     <tr class="gradeX <?= $item_status ?>">
                                         <td class="string nowrap">
                                             <span class="status-label"><?= $item->status != 'archived' ? 'No' : 'Yes' ?></span>
                                         </td>
-                                        <td><?= $item->fullname ?></td>
-                                        <td><?= $item->ContactID ?></td>
+                                        <td><a href="<?= HOST_NAME.'customers/customer/'.$item->id ?>"><?= $item->fullname ?></a> </td>
+                                        <td><?= $item->xero_ContactID ?></td>
                                         <td><?= $item->email ?></td>
                                         <td><?= $item->suburb ?></td>
                                         <td><?= $item->phone ?></td>
@@ -53,6 +55,9 @@
                             <?php endif; ?>
                             </tbody>
                         </table>
+
+                        <?= $data->pagination ?>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>

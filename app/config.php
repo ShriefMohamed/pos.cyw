@@ -19,11 +19,13 @@ ini_set("xdebug.var_display_max_depth", -1);
 // define some of the necessary directories and paths so it be easier later to call them
 defined('DS') ? null : define('DS', DIRECTORY_SEPARATOR);
 
-defined('APP_PATH') ? null : define('APP_PATH', realpath(dirname(__file__)) .DS);
-defined('HOST_NAME') ? null : define('HOST_NAME', 'http://' . $_SERVER['HTTP_HOST'] . '/');
-defined('CURRENT_URI') ? null : define('CURRENT_URI', parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
 defined('WEBSITE_NAME') ? null : define('WEBSITE_NAME', 'Compute Your World');
 
+defined('PROTOCOL') ? null : define('PROTOCOL', $_SERVER['REQUEST_SCHEME'] . '://');
+defined('HOST_NAME') ? null : define('HOST_NAME', PROTOCOL . $_SERVER['HTTP_HOST'] . '/');
+defined('CURRENT_URI') ? null : define('CURRENT_URI', parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
+
+defined('APP_PATH') ? null : define('APP_PATH', realpath(dirname(__file__)) .DS);
 
 define('LIB_PATH', APP_PATH . 'lib' .DS);
 define('MODELS_PATH', APP_PATH . 'models' .DS);
@@ -54,7 +56,7 @@ define('PUBLIC_DIR', HOST_NAME);
 define('CSS_DIR', PUBLIC_DIR . 'stylesheets/');
 define('JS_DIR', PUBLIC_DIR . 'javascript/');
 define('IMAGES_DIR', PUBLIC_DIR . 'images/');
-define('EMAIL_IMAGES_DIR', PUBLIC_DIR . 'images/email_images');
+define('EMAIL_IMAGES_DIR', PUBLIC_DIR . 'images/email_images/');
 define('ATTACHMENTS_DIR', PUBLIC_DIR . 'job_attachments/');
 define('INSURANCE_REPORTS_DIR', PUBLIC_DIR . 'insurance_reports/');
 define('SALES_RECEIPTS_DIR', PUBLIC_DIR . 'sales_receipts/');
@@ -86,6 +88,10 @@ define('XERO_REDIRECT_URI', 'https://jobs.cyw.net.au/xero/callback');
 define('NETO_API_USERNAME', 'shrief');
 define('NETO_API_KEY', 'Axhjwx2pVkgsjGEB6KHEorIYFawG7tNZ');
 
+
+// Google reCAPTCHA
+define('reCAPTCHA_SITE_KEY', '6LdgniYaAAAAACV8hZXjoHclVGb0a5MbnxK-p5Tf');
+define('reCAPTCHA_SECRET_KEY', '6LdgniYaAAAAAJ_P2PzdnYt2TnxYH_L95roU30_g');
 
 // Mobile API Key
 define('MOBILE_API_KEY', '99e55cf9-81a0-4fe4-a2d1-7efc51f0b33c');

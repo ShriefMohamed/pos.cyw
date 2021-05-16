@@ -338,7 +338,6 @@ input:not(:-webkit-autofill) {
 }
 .cr-table__body-cell {
     height: 3rem;
-    vertical-align: top;
     border-top: solid 1px #e1e4e5;
     padding: 0.75rem 0 0.75rem 1.125rem;
 }
@@ -875,4 +874,5 @@ textarea:not(:-webkit-autofill) {
 .dropdown-menu.show {
     -webkit-animation-name: none;
     animation-name: none;
+    /*left: 30px !important;*/
 }

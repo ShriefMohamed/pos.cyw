@@ -11,7 +11,7 @@ class storageclass
         return Session::Get('oauth2');
     }
 
-    public function setToken($token, $expires = null, $tenantId, $refreshToken, $idToken)
+    public function setToken($token, $expires, $tenantId, $refreshToken, $idToken)
     {
         Session::Set('oauth2', [
             'token' => $token,

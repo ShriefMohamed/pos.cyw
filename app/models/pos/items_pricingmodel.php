@@ -11,9 +11,11 @@ class Items_pricingModel extends AbstractModel
     public $id;
     public $item_id;
     public $item_uid;
+
     public $buy_price;
     public $rrp_percentage;
     public $rrp_price;
+
     public $created;
 
     protected static $tableName = 'items_pricing';

@@ -11,8 +11,8 @@
             <div id="work_listing listing">
                 <div id="listing_loc_matches">
                     <div class="container" style="max-width: 100%">
-
-                        <table cellpadding="0" cellspacing="0" border="0" class="g-datatable datatable table table-striped table-bordered table-status-colors">
+                        <?php if (isset($data) && $data !== false) : ?>
+                        <table cellpadding="0" cellspacing="0" border="0" class="default-datatable datatable table table-striped table-bordered table-status-colors">
                             <thead>
                             <tr>
                                 <th>ARCHIVED</th>
@@ -25,8 +25,8 @@
                             </tr>
                             </thead>
                             <tbody>
-                            <?php if (isset($data) && $data !== false) : ?>
-                                <?php foreach ($data as $item) : ?>
+                            <?php if (isset($data->data) && $data->data) : ?>
+                            <?php foreach ($data->data as $item) : ?>
                                     <?php $item_status = $item->status != 'archived' ? 'status-green' : 'status-red'; ?>
 
                                     <tr class="gradeX <?= $item_status ?>">
@@ -48,10 +48,13 @@
                                             <?php endif; ?>
                                         </td>
                                     </tr>
-                                <?php endforeach; ?>
+                            <?php endforeach; ?>
                             <?php endif; ?>
                             </tbody>
                         </table>
+
+                        <?= $data->pagination ?>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>

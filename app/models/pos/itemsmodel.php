@@ -11,6 +11,7 @@ class ItemsModel extends AbstractModel
     public $id;
     public $uid;
     public $item_number;
+    public $xero_ItemID;
 
     public $item;
     public $description;
@@ -21,8 +22,14 @@ class ItemsModel extends AbstractModel
     public $shop_sku;
     public $man_sku;
 
-    public $xero_account_id;
-    public $xero_account_code;
+
+    // new
+    public $buy_price;
+    public $rrp_percentage;
+    public $rrp_price;
+    //
+
+
     public $department;
     public $department_code;
     public $category;
@@ -32,23 +39,24 @@ class ItemsModel extends AbstractModel
     public $discountable;
     public $tax_class;
 
-    public $auto_reorder;
-    public $reorder_point;
-    public $reorder_level;
-
     public $is_misc;
     public $is_digital;
+    public $is_tracked_as_inventory;
 
     public $created;
     public $updated;
 
     public $status;
+    public $source; //'manual','xero','csv_import'
+
+    public $search_keywords;
 
     protected static $tableName = 'items';
     protected static $pk = 'id';
     protected $tableSchema = array(
         'uid' => self::DATA_TYPE_STR,
         'item_number' => self::DATA_TYPE_INT,
+        'xero_ItemID' => self::DATA_TYPE_STR,
         'item' => self::DATA_TYPE_STR,
         'description' => self::DATA_TYPE_STR,
         'item_type' => self::DATA_TYPE_STR,
@@ -58,8 +66,10 @@ class ItemsModel extends AbstractModel
         'shop_sku' => self::DATA_TYPE_STR,
         'man_sku' => self::DATA_TYPE_STR,
 
-        'xero_account_id' => self::DATA_TYPE_INT,
-        'xero_account_code' => self::DATA_TYPE_INT,
+        'buy_price' => parent::DATA_TYPE_FLOAT,
+        'rrp_percentage' => parent::DATA_TYPE_INT,
+        'rrp_price' => parent::DATA_TYPE_FLOAT,
+
         'department' => self::DATA_TYPE_STR,
         'department_code' => self::DATA_TYPE_STR,
         'category' => self::DATA_TYPE_INT,
@@ -69,17 +79,17 @@ class ItemsModel extends AbstractModel
         'discountable' => self::DATA_TYPE_INT,
         'tax_class' => self::DATA_TYPE_INT,
 
-        'auto_reorder' => self::DATA_TYPE_INT,
-        'reorder_point' => self::DATA_TYPE_INT,
-        'reorder_level' => self::DATA_TYPE_INT,
-
         'is_misc' => self::DATA_TYPE_INT,
         'is_digital' => self::DATA_TYPE_INT,
+        'is_tracked_as_inventory' => self::DATA_TYPE_INT,
 
         'created' => self::DATA_TYPE_STR,
         'updated' => self::DATA_TYPE_STR,
-        'status' => self::DATA_TYPE_STR
+        'status' => self::DATA_TYPE_STR,
+        'source' => self::DATA_TYPE_STR,
+        'search_keywords' => self::DATA_TYPE_STR
     );
+
 
     // for creating an item
     public static function getAllTags($options = '')
@@ -149,19 +159,14 @@ class ItemsModel extends AbstractModel
         return (!empty($fdepartments)) ? $fdepartments : false;
     }
 
-    public static function generateUniqueNumber()
+    public static function generateUniqueNumber(): int
     {
         $sql = "SELECT FLOOR(RAND() * 99999) AS random_num
                 FROM items 
                 WHERE 'random_num' NOT IN (SELECT items.uid FROM items)
                 LIMIT 1";
-        return parent::getSQL($sql, '', true);
-    }
-
-    public static function getNextID($options = '')
-    {
-        $sql = "SELECT MAX(auto_increment) AS next_id FROM INFORMATION_SCHEMA.TABLES WHERE table_name = 'items' LIMIT 1";
-        return parent::getSQL($sql, '', true);
+        $random_num = parent::getSQL($sql, '', true);
+        return $random_num ? $random_num->random_num : 42561;
     }
 
 
@@ -241,11 +246,54 @@ class ItemsModel extends AbstractModel
 //                GROUP BY items.id";
 //    }
 
+
+
+    public static function getAllItemsDetails($options = '', $shift = false)
+    {
+        $sql = "SELECT items.*, items.id AS item_o_id, 
+                    items_inventory.id AS item_inventory_id, items_inventory.vendor_id, 
+                        items_inventory.quantity,    
+                    (SELECT SUM(items_inventory.qoh) 
+                     FROM items_inventory
+                     WHERE items_inventory.item_id = items.id && items_inventory.qoh != 0
+                     ) AS available_stock,
+
+                    items_xero_accounts.id AS items_xero_accounts_id,
+                    items_xero_accounts.inventory_asset_xero_account_id, 
+                    items_xero_accounts.inventory_asset_xero_account_code, 
+                    items_xero_accounts.purchase_xero_account_id, 
+                    items_xero_accounts.purchase_xero_account_code, 
+                    items_xero_accounts.sales_xero_account_id, 
+                    items_xero_accounts.sales_xero_account_code,
+                    
+                    items_auto_reorder.id AS items_auto_reorder_id, 
+                    items_auto_reorder.auto_reorder, items_auto_reorder.reorder_point, 
+                    items_auto_reorder.reorder_level, 
+                    
+                    categories.category AS category_name, brands.brand AS brand_name,
+                    tax_classes.class, tax_classes.rate
+                      
+                FROM items 
+                
+                LEFT JOIN items_inventory ON items_inventory.id = (
+                    SELECT items_inventory.id
+                    FROM items_inventory
+                    WHERE items.id = items_inventory.item_id
+                    ORDER BY items_inventory.id ASC
+                    LIMIT 1)
+                LEFT JOIN items_xero_accounts ON items.id = items_xero_accounts.item_id
+                LEFT JOIN items_auto_reorder ON items.id = items_auto_reorder.item_id
+                LEFT JOIN categories ON items.category = categories.id
+                LEFT JOIN brands ON items.brand = brands.id
+                LEFT JOIN tax_classes ON items.tax_class = tax_classes.id
+                $options
+                GROUP BY items.id";
+        return parent::getSQL($sql, '', $shift);
+    }
+
     public static function getItems($options = '', $shift = false)
     {
-        $sql = "SELECT items.*, items.id AS item_o_id,
-                    items_pricing.id AS item_pricing_id, items_pricing.buy_price, 
-                        items_pricing.rrp_percentage, items_pricing.rrp_price, 
+        $sql = "SELECT items.*, items.id AS item_o_id, 
                     items_inventory.id AS item_inventory_id, items_inventory.vendor_id, 
                         items_inventory.quantity,    
                     (SELECT SUM(items_inventory.qoh) 
@@ -258,17 +306,10 @@ class ItemsModel extends AbstractModel
                       
                 FROM items 
                 
-                LEFT JOIN items_pricing ON items_pricing.id = (
-                    SELECT items_pricing.id
-                    FROM items_pricing
-                    WHERE items.id = items_pricing.item_id
-                    ORDER BY items_pricing.id ASC 
-                    LIMIT 1)
                 LEFT JOIN items_inventory ON items_inventory.id = (
                     SELECT items_inventory.id
                     FROM items_inventory
-                    WHERE items.id = items_inventory.item_id &&
-                        items_inventory.pricing_id = items_pricing.id
+                    WHERE items.id = items_inventory.item_id
                     ORDER BY items_inventory.id ASC
                     LIMIT 1)
                 LEFT JOIN categories ON items.category = categories.id
@@ -277,6 +318,20 @@ class ItemsModel extends AbstractModel
                 $options
                 GROUP BY items.id";
         return parent::getSQL($sql, '', $shift);
+    }
+
+    public static function getItemKeywords($item_id)
+    {
+        $sql = "SELECT items.item, items.item_number, items.description, 
+                    items.uid, items.upc, items.shop_sku, items.man_sku, 
+                    items.department, items.department_code, items.tags, 
+                    categories.category, 
+                    brands.brand
+                FROM items
+                LEFT JOIN categories ON items.category = categories.id
+                LEFT JOIN brands ON items.brand = brands.id
+                WHERE items.id = '$item_id' ";
+        return parent::getSQL($sql, '', 'assoc');
     }
 
     public static function getItemsSimple($options = '', $shift = false)
@@ -291,33 +346,26 @@ class ItemsModel extends AbstractModel
         return parent::getSQL($sql, '', $shift);
     }
 
-    //
-    public static function getItemsAvgPrice($options = '', $shift = false)
+    public static function getItemsForXeroPush($options = '')
     {
-        $sql = "SELECT items.*,
-                        
-                    (SELECT SUM(items_inventory.qoh) 
-                     FROM items_inventory
-                     WHERE items_inventory.item_id = items.id && items_inventory.qoh != 0
-                     ) AS available_stock,
-                  
-                    (SELECT AVG(items_pricing.rrp_price)
-                     FROM items_pricing
-                     WHERE items.id = items_pricing.item_id                      
-                    ) AS items_avg_price,
+        $sql = "SELECT items.id, items.item, items.description, items.shop_sku, 
+                    items.is_tracked_as_inventory, items.tax_class,
+                    items.buy_price, items.rrp_price,
                     
-                    categories.category AS category_name, brands.brand AS brand_name,
-                    tax_classes.class, tax_classes.rate
-                      
+                    items_xero_accounts.inventory_asset_xero_account_code, 
+                    items_xero_accounts.purchase_xero_account_code, 
+                    items_xero_accounts.sales_xero_account_code, 
+                    
+                    (SELECT SUM(items_inventory.qoh)
+                    FROM items_inventory
+                    WHERE items_inventory.item_id = items.id && items_inventory.qoh != 0
+                    ) AS quantity_on_hand
                 FROM items
-                    
-                LEFT JOIN categories ON items.category = categories.id
-                LEFT JOIN brands ON items.brand = brands.id
-                LEFT JOIN tax_classes ON items.tax_class = tax_classes.id
-                $options
-                GROUP BY items.id";
-        return parent::getSQL($sql, '', $shift);
+                LEFT JOIN items_xero_accounts ON items_xero_accounts.item_id = items.id
+                WHERE (!ISNULL(items.shop_sku) && !ISNULL(items.item)) $options GROUP BY items.id";
+        return parent::getSQL($sql);
     }
+
     //
     public static function getItemAvailableQuantity($item_id)
     {
@@ -334,25 +382,16 @@ class ItemsModel extends AbstractModel
     public static function getItemInventoryPricingTaxDetails($item_id)
     {
         $sql = "SELECT items.*, items.id AS item_o_id,
-                    items_pricing.id AS item_pricing_id, items_pricing.buy_price, 
-                        items_pricing.rrp_percentage, items_pricing.rrp_price, 
                     items_inventory.id AS item_inventory_id, items_inventory.vendor_id, 
-                        items_inventory.quantity, items_inventory.qoh,
+                    items_inventory.quantity, items_inventory.qoh,
                      
                     tax_classes.class, tax_classes.rate
                 FROM items 
                 
-                LEFT JOIN items_pricing ON items_pricing.id = (
-                    SELECT items_pricing.id
-                    FROM items_pricing
-                    WHERE items.id = items_pricing.item_id
-                    ORDER BY items_pricing.id ASC 
-                    LIMIT 1)
                 LEFT JOIN items_inventory ON items_inventory.id = (
                     SELECT items_inventory.id
                     FROM items_inventory
-                    WHERE items.id = items_inventory.item_id &&
-                        items_inventory.pricing_id = items_pricing.id
+                    WHERE items.id = items_inventory.item_id && items_inventory.qoh > 0 
                     ORDER BY items_inventory.id ASC
                     LIMIT 1)
                     
@@ -378,13 +417,16 @@ class ItemsModel extends AbstractModel
 
     public static function Search($key, $options = '')
     {
-        $sql = "SELECT items.*, items.id AS item_o_id,
-                    items_pricing.id AS item_pricing_id, items_pricing.buy_price, 
-                        items_pricing.rrp_percentage, items_pricing.rrp_price, 
+        $search = parent::getColumns(['id'], "search_keywords LIKE '%$key%'");
+        if ($search) {
+            $items = implode(', ', $search);
+
+            $sql = "SELECT items.*, items.id AS item_o_id,
                     items_inventory.id AS item_inventory_id, items_inventory.vendor_id, 
                         items_inventory.quantity,
 
-                    categories.category AS category_name, brands.brand AS brand_name,
+                    categories.category AS category_name, 
+                    brands.brand AS brand_name,
                     tax_classes.class, tax_classes.rate,
                     
                     (SELECT SUM(items_inventory.qoh) 
@@ -394,17 +436,10 @@ class ItemsModel extends AbstractModel
                       
                 FROM items 
                 
-                LEFT JOIN items_pricing ON items_pricing.id = (
-                    SELECT items_pricing.id
-                    FROM items_pricing
-                    WHERE items.id = items_pricing.item_id
-                    ORDER BY items_pricing.id ASC 
-                    LIMIT 1)
                 LEFT JOIN items_inventory ON items_inventory.id = (
                     SELECT items_inventory.id
                     FROM items_inventory
-                    WHERE items.id = items_inventory.item_id &&
-                        items_inventory.pricing_id = items_pricing.id
+                    WHERE items.id = items_inventory.item_id
                     ORDER BY items_inventory.id ASC
                     LIMIT 1)
         
@@ -412,19 +447,42 @@ class ItemsModel extends AbstractModel
                 LEFT JOIN brands ON items.brand = brands.id
                 LEFT JOIN tax_classes ON items.tax_class = tax_classes.id
                 
-                WHERE ( 
-                        items.item LIKE '%$key%' ||
-                        items.item_number LIKE '%$key%' ||
-                        items.description LIKE '%$key%' ||
-                        items.uid LIKE '%$key%' ||
-                        items.upc LIKE '%$key%' ||
-                        items.shop_sku LIKE '%$key%' ||
-                        items.man_sku LIKE '%$key%' ||
-                        items.brand LIKE '%$key%' ||
-                        items.tags LIKE '%$key%'
-                    )
-                    $options
+                WHERE items.id IN ($items) 
+                $options
                 GROUP BY items.id";
-        return parent::getSQL($sql);
+            return parent::getSQL($sql);
+        }
+        return false;
+    }
+
+
+
+
+
+    /* new */
+    public function getItemsAvgPrice($options = ''): ItemsModel
+    {
+        $this->_sql = "SELECT items.*,
+                        
+                    (SELECT SUM(items_inventory.qoh) 
+                     FROM items_inventory
+                     WHERE items_inventory.item_id = items.id && items_inventory.qoh != 0
+                     ) AS available_stock,
+                  
+                    (SELECT AVG(items_inventory.rrp_price)
+                     FROM items_inventory
+                     WHERE items.id = items_inventory.item_id                      
+                    ) AS items_avg_price,
+                    
+                    categories.category AS category_name, brands.brand AS brand_name,
+                    tax_classes.class, tax_classes.rate
+                      
+                FROM items
+                    
+                LEFT JOIN categories ON items.category = categories.id
+                LEFT JOIN brands ON items.brand = brands.id
+                LEFT JOIN tax_classes ON items.tax_class = tax_classes.id";
+        $this->_options = $options;
+        return $this;
     }
 }

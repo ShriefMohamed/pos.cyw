@@ -8,9 +8,9 @@ use League\OAuth2\Client\Provider\GenericProvider;
 
 class XeroModel
 {
-    public $sync_types = array('customers', 'accounts', 'invoices');
+    public $sync_types = array('customers', 'accounts', 'invoices', 'items');
 
-    public function Provider()
+    public function Provider(): GenericProvider
     {
         return $provider = new GenericProvider([
             'clientId'                => XERO_KEY,

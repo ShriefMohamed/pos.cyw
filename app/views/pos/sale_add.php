@@ -1,3 +1,18 @@
+<script src="<?= VENDOR_DIR.'onscan.js/onscan.js' ?>"></script>
+<script>
+    // Enable scan events for the entire document
+    onScan.attachTo(document, {
+        suffixKeyCodes: [13], // enter-key expected at the end of a scan
+        reactToPaste: true, // Compatibility to built-in scanners in paste-mode (as opposed to keyboard-mode)
+        onScan: function(sCode, iQty) { // Alternative to document.addEventListener('scan')
+            console.log('Scanned: ' + iQty + 'x ' + sCode);
+        },
+        onKeyDetect: function(iKeyCode){ // output all potentially relevant key events - great for debugging!
+            console.log('Pressed: ' + iKeyCode);
+        }
+    });
+</script>
+
 <div id="register">
     <form method="post">
 

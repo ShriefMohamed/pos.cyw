@@ -4445,8 +4445,8 @@ div.notifier.active {
 }
 .view .content .view_group label {
     color: #666;
-    font-size: 0.8em;
-    margin: 0 0 0 1em;
+    font-size: 0.8rem;
+    margin: 0 0 0 1rem;
 }
 .view .content .view_group label.hidden {
     display: none;

@@ -94,11 +94,4 @@ class QuotesModel extends AbstractModel
                 $options";
         return parent::getSQL($sql, false, $shift);
     }
-
-
-    public static function getNextID($options = '')
-    {
-        $sql = "SELECT MAX(auto_increment) AS next_id, LPAD(MAX(auto_increment),7,'0') AS next_reference FROM INFORMATION_SCHEMA.TABLES WHERE table_name = 'quotes' LIMIT 1";
-        return parent::getSQL($sql, '', true);
-    }
 }

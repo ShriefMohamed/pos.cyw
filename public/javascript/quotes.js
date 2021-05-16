@@ -1,7 +1,6 @@
-var current_page_num = 1, per_page = 20;
+var per_page = 20;
 function reloadProducts(page) {
-    current_page_num = page;
-    $('#category-select').trigger('change');
+    $('#category-select').trigger('change', page);
 }
 
 $(document).ready(function () {
@@ -120,6 +119,10 @@ $(document).ready(function () {
 
     $('#category-select').on('change', function (e) {
         var category = $(this).val();
+        $('#subcategory-select').val('');
+        $('#manufacturer-select').val('');
+        $('#input-with-keypress-0').val('');
+        $('#input-with-keypress-1').val('');
 
         $.ajax({
             type: "POST",
@@ -171,8 +174,8 @@ $(document).ready(function () {
         });
     });
 
-    $('.filters-select').on('change ', function (e) {
-        search_leaderItems();
+    $('.filters-select').on('change ', function (e, page = 1) {
+        search_leaderItems(false, page);
     });
 
 
@@ -202,6 +205,7 @@ $(document).ready(function () {
                 if (data !== false) {
                     var $html = '';
                     var td_compnent = $target_tr.find('.td__addComponent');
+                    var component_name = $target_tr.find('.select-part-btn').data('category');
                     if (td_compnent.length == 0) {
                         $html += "<tr class=\"tr__product tr__product-row tr__product-"+$item_id+" "+$($target_tr).data('class')+"\" data-class='"+$($target_tr).data('class')+"'>\n";
 
@@ -475,7 +479,7 @@ function priceSlider(min, max, current) {
     });
 }
 
-function search_leaderItems(price_range = false) {
+function search_leaderItems(price_range = false, current_page_num = 1) {
     var category = $('#category-select').val(),
         subcategory = $('#subcategory-select').val(),
         manufacturer = $('#manufacturer-select').val(),

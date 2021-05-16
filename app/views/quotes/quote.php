@@ -104,7 +104,7 @@
                                                 <tr class="tr__product tr__product-row tr__product-<?= $quote_item->item_id ?> <?= FilterInput::CleanString(str_replace(' ', '', $category)) ?>-tr" id="<?= FilterInput::CleanString(str_replace(' ', '', $category)) ?>-tr" data-class="<?= FilterInput::CleanString(str_replace(' ', '', $category)) ?>-tr" data-component="<?= $category ?>">
                                                     <td class="td__component">
                                                         <?php if ($key == 0) : ?>
-                                                        <a href="#" class="select-part-btn" data-category="<?= $category ?>"><?= $category ?></a>
+                                                        <a href="#" class="select-part-btn" data-category="<?= str_replace("Alternative", "", $category) ?>"><?= $category ?></a>
                                                         <?php endif; ?>
                                                     </td>
                                                     <td class="td__component">
@@ -134,7 +134,7 @@
                                                         <div class="display_subtotal">$<?= number_format($quote_item->price * $quote_item->quantity, 2) ?></div>
                                                     </td>
                                                     <td>
-                                                        <a href="#" class="component-control select-part-btn" data-action="add-more" data-category="<?= $category ?>" title="Add More"><i class="fa fa-plus"></i></a>
+                                                        <a href="#" class="component-control select-part-btn" data-action="add-more" data-category="<?= str_replace("Alternative", "", $category) ?>" title="Add More"><i class="fa fa-plus"></i></a>
                                                         <a href="#" class="component-control ajax-remove-part-btn" data-quote-id="<?= $quote_item->quote_id ?>" data-id="<?= $quote_item->id ?>" title="Remove"><i class="fa fa-trash"></i></a>
                                                     </td>
                                                     <input type="hidden" name="items[<?= $quote_item->item_id ?>][component]" value="<?= $category ?>">
@@ -147,7 +147,7 @@
                                         <?php else : ?>
                                             <tr class="tr__product" id="<?= FilterInput::CleanString(str_replace(' ', '', $category)) ?>-tr" data-class="<?= FilterInput::CleanString(str_replace(' ', '', $category)) ?>-tr" data-component="<?= $category ?>">
                                                 <td class="td__component">
-                                                    <a href="#" class="select-part-btn" data-category="<?= $category ?>"><?= $category ?></a>
+                                                    <a href="#" class="select-part-btn" data-category="<?= str_replace("Alternative", "", $category) ?>"><?= $category ?></a>
                                                 </td>
                                                 <td class="td__component">
                                                     <label>Merge
@@ -155,7 +155,7 @@
                                                     </label>
                                                 </td>
                                                 <td class="td__addComponent" colspan="8">
-                                                    <button type="button" class="btn btn-primary select-part-btn" data-category="<?= $category ?>">
+                                                    <button type="button" class="btn btn-primary select-part-btn" data-category="<?= str_replace("Alternative", "", $category) ?>">
                                                         <i class="fa fa-plus"></i>
                                                         Choose <?= $category ?>
                                                     </button>
@@ -294,7 +294,7 @@
                                                         <option value="">Select Category</option>
                                                         <?php if (isset($categories) && $categories) : ?>
                                                             <?php foreach ($categories as $category) : ?>
-                                                                <option value="<?= $category ?>"><?= $category ?></option>
+                                                                <option value="<?= str_replace("Alternative", "", $category) ?>"><?= $category ?></option>
                                                             <?php endforeach; ?>
                                                         <?php endif; ?>
                                                     </select>

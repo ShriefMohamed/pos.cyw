@@ -71,15 +71,6 @@ class RepairsModel extends AbstractModel
         return parent::getSQL($sql, '', true);
     }
 
-    public static function GenerateJobUniqueNumber()
-    {
-        $sql = "SELECT FLOOR(RAND() * 99999) AS random_num
-                FROM repairs 
-                WHERE 'random_num' NOT IN (SELECT repairs.job_id FROM repairs)
-                LIMIT 1";
-        return parent::getSQL($sql, '', true);
-    }
-
     public static function getRepairs($options = '', $shift = false)
     {
         $sql = "SELECT repairs.*, 

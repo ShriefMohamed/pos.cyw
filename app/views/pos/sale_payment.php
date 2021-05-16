@@ -180,11 +180,11 @@
                                     <tr id="totals_title_whitespace"></tr>
 
                                     <?php $total_without_before = $sale->total; ?>
-                                    <?php if (isset($sale_paid_amount) && $sale_paid_amount !== false && $sale_paid_amount->total_paid) : ?>
-                                    <?php $total_without_before = $sale->total - $sale_paid_amount->total_paid; ?>
+                                    <?php if ($sale->total_paid > 0) : ?>
+                                    <?php $total_without_before = $sale->total - $sale->total_paid; ?>
                                     <tr class="partial-payments">
                                         <th>Payments from Before</th>
-                                        <td id="payments_total3" data-total-paid="<?= $sale_paid_amount->total_paid ?>">$<?= number_format($sale_paid_amount->total_paid, 2) ?></td>
+                                        <td id="payments_total3" data-total-paid="<?= $sale->total_paid ?>">$<?= number_format($sale->total_paid, 2) ?></td>
                                     </tr>
                                     <?php endif; ?>
 

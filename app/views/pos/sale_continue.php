@@ -4,7 +4,8 @@
 
         <section class="main">
             <div class="register-customer">
-                <input type="hidden" name="customer-id" id="customer-id-holder" value="<?= isset($sale->customer_id) && $sale->customer_id ? $sale->customer_id : '' ?>">
+                <input type="hidden" name="user-id" id="customer-id-holder" value="<?= isset($sale->user_customer_id) && $sale->user_customer_id ? $sale->user_customer_id : '' ?>">
+                <input type="hidden" name="customer-id" id="user-customer-id-holder" value="<?= isset($sale->customer_id) && $sale->customer_id ? $sale->customer_id : '' ?>">
 
                 <div id="customerInfo" class="block placeholder"><?= $sale->customer_name ?: 'No Customer Selected' ?></div>
                 <button id="customerRemoveButton" tabindex="9" type="button" class="gui-def-button" style="display:<?= isset($sale->customer_id) && $sale->customer_id ? '' : 'none' ?>"><i class="fa fa-trash"></i> Remove</button>
@@ -132,6 +133,7 @@
                             <tr class="item-row item-<?= $sale_item->item_id ?> <?= $sale_item->item_type == 'refund' ? 'refund refund-item-'.$sale_item->item_id : '' ?>" data-item-id="<?= $sale_item->item_id ?>" data-sale-item-id="<?= $sale_item->id ?>" data-item-stock="<?= $sale_item->available_stock ?>">
                                 <input type="hidden" name="items[<?= $sale_item->item_id ?>][id]" value="<?= $sale_item->item_id ?>">
                                 <input type="hidden" name="items[<?= $sale_item->item_id ?>][sale_item_id]" value="<?= $sale_item->id ?>">
+                                <input type="hidden" name="items[<?= $sale_item->item_id ?>][invoice_line_id]" value="<?= $sale_item->invoice_line_id ?>">
                                 <input type="hidden" name="items[<?= $sale_item->item_id ?>][type]" value="<?= $sale_item->item_type ?>">
                                 <td class="row_controls">
                                     <a href="#" class="control remove-item-row-ajax"><i class="fa fa-trash"></i></a>
@@ -151,7 +153,7 @@
                                 <td>
                                     <input type="number" name="items[<?= $sale_item->item_id ?>][qty]" class="display_quantity number xx-small" maxlength="8" tabindex="3000" value="<?= $sale_item->quantity ?>">
                                 </td>
-                                <td class="display_tax" data-tax="10"><?= $sale_item->class.' ('.$sale_item->rate.'%)' ?></td>
+                                <td class="display_tax" data-tax="<?= $sale_item->rate ?>"><?= $sale_item->class ? $sale_item->class.' ('.$sale_item->rate.'%)' : 'None' ?></td>
                                 <td class="display_subtotal money">$<?= number_format($sale_item->rrp_price, 2) ?></td>
                             </tr>
                         <?php endforeach; ?>
@@ -313,30 +315,6 @@
         $('#pricing-level').trigger('change');
         ApplyDiscount();
         UpdateTotal();
-
-        $(document).on('click', '.remove-item-row-ajax', function (e) {
-            var $item_row = $(this).closest('.item-row');
-            var $sale_item_id = $item_row.data('sale-item-id');
-
-            $.ajax({
-                type: "POST",
-                url: "/ajax/sale_remove_item/" + $sale_item_id,
-                dataType: 'json',
-                beforeSend: function () {
-                    Pace.restart();
-                },
-                success: function (data) {
-                    $item_row.remove();
-                    if ($('#register_transaction .item-row').length == 0) {
-                        $('#deleteAllButton').addClass('hidden');
-                    }
-                    UpdateTotal();
-                },
-                fail: function (err) {
-                    showFeedback('error', err.responseText);
-                }
-            });
-        });
     });
 </script>
 <?php endif; ?>

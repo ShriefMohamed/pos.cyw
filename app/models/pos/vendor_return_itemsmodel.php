@@ -39,6 +39,7 @@ class Vendor_return_itemsModel extends AbstractModel
         $sql = "SELECT vendor_return_items.*,
                     items.item,
                     items_inventory.qoh,
+                    purchase_orders_items.order_id AS purchase_order_id,
                    (SELECT SUM(items_inventory.qoh) 
                      FROM items_inventory
                      WHERE items_inventory.item_id = items.id && items_inventory.qoh != 0
@@ -46,6 +47,7 @@ class Vendor_return_itemsModel extends AbstractModel
                 FROM vendor_return_items
                 LEFT JOIN items ON vendor_return_items.item_id = items.id
                 LEFT JOIN items_inventory ON vendor_return_items.inventory_id = items_inventory.id
+                LEFT JOIN purchase_orders_items ON vendor_return_items.purchase_order_item_id = purchase_orders_items.id
                 $options";
         return parent::getSQL($sql);
     }

@@ -11,8 +11,8 @@
             <div id="work_listing">
                 <div id="listing_loc_matches">
                     <div class="container" style="max-width: 100%">
-
-                        <table cellpadding="0" cellspacing="0" border="0" class="g-datatable datatable table table-striped table-bordered">
+                        <?php if (isset($customers) && $customers != false) : ?>
+                        <table cellpadding="0" cellspacing="0" border="0" class="default-datatable datatable table table-striped table-bordered">
                             <thead>
                             <tr>
                                 <th>Name</th>
@@ -25,8 +25,8 @@
                             </tr>
                             </thead>
                             <tbody>
-                            <?php if (isset($data) && $data !== false) : ?>
-                                <?php foreach ($data as $item) : ?>
+                            <?php if (isset($customers->data) && $customers->data !== false) : ?>
+                                <?php foreach ($customers->data as $item) : ?>
                                     <tr class="gradeX">
                                         <td><a href="<?= HOST_NAME . 'customers/customer/' . $item->id ?>">#<?= $item->firstName.' '.$item->lastName ?></a></td>
                                         <td><?= $item->companyName ?></td>
@@ -50,6 +50,9 @@
                             <?php endif; ?>
                             </tbody>
                         </table>
+
+                        <?= $customers->pagination ?>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>

@@ -65,7 +65,14 @@ class FrontController
 	{
 	    // Check if requested page is one of the protected pages which requires login such admin or pos etc,
         // then check if logged in & if the logged in user's role allowed to access that page, else redirect him to login
-		if ($this->_controller == 'admin' || $this->_controller == 'pos' || $this->_controller == 'quotes' || $this->_controller == 'licenses') {
+		if ($this->_controller == 'admin'
+            || $this->_controller == 'pos'
+            || $this->_controller == 'quotes'
+            || $this->_controller == 'licenses'
+            || $this->_controller == 'xero'
+            || $this->_controller == 'customers'
+            || $this->_controller == 'insurance'
+        ) {
 			if (!Session::Exists('loggedin') || Session::Get('loggedin')->role != 'admin') {
 				$this->_controller = 'login';
 				$this->_action = 'default';
@@ -96,7 +103,7 @@ class FrontController
 
 		$controllerClassName = 'Framework\Controllers\\' . ucfirst($this->_controller) . 'Controller';
 
-		// for the frontcontroller to be able to call a function at the controller automaticly just by spliting the url
+		// for the frontcontroller to be able to call a function at the controller automatically just by splitting the url
 		// we have to add Action after the function/action name
 		// the DefaultAction get called if the url is: www.x.com/index/default -> index: the controller class name, default: the action/function's name
 

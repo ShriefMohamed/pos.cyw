@@ -55,7 +55,7 @@ class Quotes_itemsModel extends AbstractModel
         $sql = "SELECT quotes_items.*,
                     leader_items.StockCode, leader_items.DBP, leader_items.RRP,
                     items.id AS pos_item_id, items.shop_sku, 
-                    items_pricing.buy_price, items_pricing.rrp_price, 
+                    items.buy_price, items.rrp_price, 
                     (SELECT SUM(items_inventory.qoh) 
                      FROM items_inventory
                      WHERE items_inventory.item_id = items.id && items_inventory.qoh != 0
@@ -63,12 +63,6 @@ class Quotes_itemsModel extends AbstractModel
                  FROM quotes_items
                  LEFT JOIN leader_items ON quotes_items.item_id = leader_items.id
                  LEFT JOIN items ON leader_items.StockCode = items.shop_sku
-                 LEFT JOIN items_pricing ON items_pricing.id = (
-                    SELECT items_pricing.id
-                    FROM items_pricing
-                    WHERE items.id = items_pricing.item_id
-                    ORDER BY items_pricing.id ASC 
-                    LIMIT 1)
                  $options";
         return parent::getSQL($sql);
     }

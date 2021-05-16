@@ -5,7 +5,7 @@
         <div class="functions">
             <button title="Save Changes" id="saveButton" class="save">Save Changes</button>
 
-            <button id="printReceiptButton" title="Print Receipt">Print Receipt</button>
+            <button id="printReceiptButton" title="Print Receipt"><i class="fa fa-print"></i> Print Receipt</button>
         </div>
         <div class="main">
             <div class="tabs tab-content">
@@ -699,7 +699,7 @@
 <script>
     $(document).ready(function () {
         $('#printReceiptButton').on('click', function (e) {
-            $("#receipt-modal").modal();
+            // $("#receipt-modal").modal();
             document.getElementById("receipt_preview_iframe").src = "<?= HOST_NAME.'pos/sale_receipt/'.$sale->id ?>";
             window.frames["receipt_preview_iframe"].focus();
             setTimeout(function () {

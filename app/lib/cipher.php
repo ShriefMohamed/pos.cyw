@@ -6,6 +6,8 @@ namespace Framework\lib;
 
 class Cipher
 {
+    private static $instance;
+
     private $key;
     private $hmackey;
     private $algorithm;
@@ -22,6 +24,16 @@ class Cipher
         $this->hmacAlgorithm = HMAC_ALGORITHM;
         $this->initializationVectorLength = openssl_cipher_iv_length($this->algorithm);
         $this->initializationVector = openssl_random_pseudo_bytes($this->initializationVectorLength);
+
+        self::$instance = $this;
+    }
+
+    public static function Instance(): Cipher
+    {
+        if (self::$instance === null) {
+            self::$instance = new self();
+        }
+        return self::$instance;
     }
 
     public function Encrypt($text)

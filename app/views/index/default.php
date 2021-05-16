@@ -448,6 +448,8 @@
                                     </div>
                                 </div>
 
+                                <?= isset($script) ? $script : '' ?>
+                                <?= isset($widget) ? $widget : '' ?>
                                 <input type="button" name="previous" class="previous action-button-previous" value="Previous" />
                                 <input type="submit" name="submit-checkin" class="next action-button" value="Confirm" />
                             </fieldset>
@@ -463,7 +465,12 @@
 
 
     <?php if (\Framework\Lib\Session::Exists('job-checkin')) : ?>
-    <div class="modal modal-alert show" id="exampleModalAlert" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="exampleModalAlertLabel">
+    <script>
+        $(document).ready(function () {
+            $('#job-checkin').modal();
+        });
+    </script>
+    <div class="modal modal-alert" role="dialog" id="job-checkin">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-body">
@@ -577,7 +584,7 @@
         var opacity;
         var errors;
 
-        $(".next").click(function(){
+        $(".next").click(function(e){
             current_fs = $(this).parent();
             current_step = current_fs[0].id;
             next_fs = $(this).parent().next();
@@ -607,7 +614,7 @@
                 if ($('#device-make').val() == null) { errors.push("Please select Make of Device"); }
                 if ($('textarea[name="issue-description"]').val() == '') { errors.push("Description of the device's issue is required."); }
             } else if (current_step == 'step-4') {
-                if (!$('#chbn')[0].checked || !$('#chby')[0].checked) { errors.push("Please select at least 1 option to be notified of updates during the process of your job."); }
+                if (!$('#chbn')[0].checked && !$('#chby')[0].checked) { errors.push("Please select at least 1 option to be notified of updates during the process of your job."); }
                 if (!$('#terms-conditions')[0].checked) { errors.push("Please read and agree to our terms & conditions."); }
 
                 if ($sigdiv.jSignature('getData', 'native').length == 0) {
@@ -624,9 +631,10 @@
                 }
                 $('#error-messages-content').html(errors_p);
                 $('.error-messages').show();
+                e.preventDefault();
                 return;
             }
-            
+
             $("#progressbar li").eq($("fieldset").index(next_fs)).addClass("active");
             next_fs.show();
 
@@ -812,4 +820,5 @@
     .custom-radio .custom-control-input:disabled:checked~.custom-control-label:before {background-color: rgba(52,108,176,.5)}
 
     .custom-form-label {padding-bottom: 1rem;}
+    .g-recaptcha>div {margin: auto}
 </style>

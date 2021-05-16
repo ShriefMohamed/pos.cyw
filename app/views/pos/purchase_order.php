@@ -426,6 +426,7 @@
                                                                     </tbody>
                                                                 </table>
                                                             </td>
+                                                            <?php if ((isset($order_items_completed) && $order_items_completed !== true) || $order->status == 'finished') : ?>
                                                             <td>
                                                                 <table class="tab_columns">
                                                                     <tbody>
@@ -439,6 +440,7 @@
                                                                     </tbody>
                                                                 </table>
                                                             </td>
+                                                            <?php endif; ?>
                                                         </tr>
                                                         </tbody>
                                                     </table>

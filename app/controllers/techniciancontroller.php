@@ -64,8 +64,7 @@ class TechnicianController extends AbstractController
                 $repair->insuranceNumber = FilterInput::String(Request::Post('insuranceNumber', false, true));
             }
 
-            $rand = RepairsModel::GenerateJobUniqueNumber();
-            $repair->job_id = ucfirst(substr($repair->device, 0, 1)) . $rand->random_num;
+            $repair->job_id = ucfirst(substr($repair->device, 0, 1)) . RepairsModel::NextID("LPAD(MAX(auto_increment),5,'0')");
 
             if ($repair->Save()) {
                 $stage = StagesModel::getAll(" WHERE stage LIKE '%Awaiting diagnosis%' LIMIT 1", true);

@@ -108,15 +108,15 @@
                                 <?php foreach ($categories as $category) : ?>
                                     <tr class="tr__product" id="<?= FilterInput::CleanString(str_replace(' ', '', $category)) ?>-tr" data-class="<?= FilterInput::CleanString(str_replace(' ', '', $category)) ?>-tr" data-component="<?= $category ?>">
                                         <td class="td__component">
-                                            <a href="#" class="select-part-btn" data-category="<?= $category ?>"><?= $category ?></a>
+                                            <a href="#" class="select-part-btn" data-category="<?= str_replace("Alternative", "", $category) ?>"><?= $category ?></a>
                                         </td>
                                         <td class="td__component">
                                             <label>Merge
-                                                <input type='checkbox' id='merge-<?= FilterInput::CleanString(str_replace(' ', '', $category)) ?>-tr' class=" merge-component-btn" data-component='<?= FilterInput::CleanString(str_replace(' ', '', $category)) ?>-tr' name='item_merge_component[<?= $category ?>]' value='<?= $category ?>' title="Merge Parts">
+                                                <input type='checkbox' id='merge-<?= FilterInput::CleanString(str_replace(' ', '', $category)) ?>-tr' class=" merge-component-btn" data-component='<?= FilterInput::CleanString(str_replace(' ', '', $category)) ?>-tr' name='item_merge_component[<?= $category ?>]' value='<?= str_replace("Alternative", "", $category) ?>' title="Merge Parts">
                                             </label>
                                         </td>
                                         <td class="td__addComponent" colspan="8">
-                                            <button type="button" class="btn btn-primary select-part-btn" data-category="<?= $category ?>">
+                                            <button type="button" class="btn btn-primary select-part-btn" data-category="<?= str_replace("Alternative", "", $category) ?>">
                                                 <i class="fa fa-plus"></i>
                                                 Choose <?= $category ?>
                                             </button>
@@ -257,7 +257,7 @@
                                                     <option value="">Select Category</option>
                                                     <?php if (isset($categories) && $categories) : ?>
                                                         <?php foreach ($categories as $category) : ?>
-                                                            <option value="<?= $category ?>"><?= $category ?></option>
+                                                            <option value="<?= str_replace('Alternative', '', $category) ?>"><?= $category ?></option>
                                                         <?php endforeach; ?>
                                                     <?php endif; ?>
                                                 </select>

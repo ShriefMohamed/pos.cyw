@@ -10,7 +10,7 @@ class CustomersModel extends AbstractModel
 {
     public $id;
     public $user_id;
-    public $ContactID;
+    public $xero_ContactID;
     public $companyName;
 
     public $discount_id;
@@ -29,13 +29,15 @@ class CustomersModel extends AbstractModel
     public $licensesNotifications;
 
     public $created;
+    public $updated;
     public $status; //archived, active
+    public $source; //xero, manual
 
     protected static $tableName = 'customers';
     protected static $pk = 'id';
     protected $tableSchema = array(
         'user_id' => self::DATA_TYPE_INT,
-        'ContactID' => self::DATA_TYPE_STR,
+        'xero_ContactID' => self::DATA_TYPE_STR,
         'companyName' => self::DATA_TYPE_STR,
 
         'discount_id' => self::DATA_TYPE_INT,
@@ -53,13 +55,15 @@ class CustomersModel extends AbstractModel
         'emailNotifications' => self::DATA_TYPE_INT,
         'licensesNotifications' => self::DATA_TYPE_INT,
         'created' => self::DATA_TYPE_STR,
-        'status' => self::DATA_TYPE_STR
+        'updated' => self::DATA_TYPE_STR,
+        'status' => self::DATA_TYPE_STR,
+        'source' => self::DATA_TYPE_STR,
     );
 
     public static function getCustomers($options = '', $shift = false)
     {
         $sql = "SELECT users.*, 
-                    customers.id AS customer_id, customers.ContactID, customers.companyName, customers.discount_id, customers.address, customers.address2,
+                    customers.id AS customer_id, customers.xero_ContactID, customers.companyName, customers.discount_id, customers.address, customers.address2,
                     customers.city, customers.suburb, customers.zip, customers.website, customers.notes, customers.credit_limit,
                     customers.emailNotifications, customers.smsNotifications,
                     discounts.title, discounts.type, discounts.discount,
@@ -92,20 +96,6 @@ class CustomersModel extends AbstractModel
                 LEFT JOIN customers ON users.id = customers.user_id
                 WHERE users.role = 'customer' && users.id = '$user_id'";
         return parent::getSQL($sql, null, true);
-    }
-
-    public static function getCustomersSimple($options = '', $shift = false)
-    {
-        $sql = "SELECT users.*, CONCAT(users.firstName,' ', users.lastName) AS fullname, 
-                    customers.id AS customer_id, customers.ContactID, customers.companyName, customers.address, customers.address2,
-                    customers.city, customers.suburb, customers.zip, customers.website, customers.notes,
-                    customers.status
-                     
-                FROM users
-                LEFT JOIN customers ON users.id = customers.user_id
-                WHERE users.role = 'customer'
-                $options";
-        return parent::getSQL($sql, null, $shift);
     }
 
     public static function getCustomerColumns($cols = '*', $where = '1', $return = '')
@@ -154,4 +144,50 @@ class CustomersModel extends AbstractModel
                 GROUP BY customers.id";
         return parent::getSQL($sql);
     }
+
+
+
+
+    public function getCustomersSimple($options = ''): CustomersModel
+    {
+        $this->_sql = "SELECT users.*, CONCAT(users.firstName,' ', users.lastName) AS fullname, 
+                    customers.id AS customer_id, customers.xero_ContactID, customers.companyName, customers.address, customers.address2,
+                    customers.city, customers.suburb, customers.zip, customers.website, customers.notes,
+                    customers.status
+                     
+                FROM users
+                LEFT JOIN customers ON users.id = customers.user_id
+                WHERE users.role = 'customer'
+                $options";
+        $this->_options = $options;
+        return $this;
+    }
+
+    public function getCustomersPOS($options = ''): CustomersModel
+    {
+        $this->_sql = "SELECT users.*, 
+                    customers.id AS customer_id, customers.xero_ContactID, customers.companyName, customers.discount_id, customers.address, customers.address2,
+                    customers.city, customers.suburb, customers.zip, customers.website, customers.notes, customers.credit_limit,
+                    customers.emailNotifications, customers.smsNotifications,
+                    discounts.title, discounts.type, discounts.discount,
+                    
+                    (
+                    (SELECT SUM(sales_payments.amount) 
+                     FROM sales_payments 
+                     LEFT JOIN sales ON sales_payments.sale_id = sales.id 
+                     WHERE sales_payments.payment_method = 'account' && sales.customer_id = users.id)
+                    -
+                    IFNULL((SELECT SUM(customers_deposits.amount) 
+                     FROM customers_deposits 
+                     WHERE customers_deposits.customer_id = users.id), 0)
+                    ) AS owed
+                     
+                FROM users
+                LEFT JOIN customers ON users.id = customers.user_id
+                LEFT JOIN discounts ON customers.discount_id = discounts.id
+                $options";
+        $this->_options = $options;
+        return $this;
+    }
+
 }

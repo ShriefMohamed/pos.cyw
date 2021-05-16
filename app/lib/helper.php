@@ -110,6 +110,21 @@ trait Helper
         return $ordered + $array;
     }
 
+    public static function mergeAlternativeCategories(array &$categories, array $alternative_categories): array
+    {
+        foreach ($alternative_categories as $alternative_category) {
+            $pos = array_search($alternative_category, array_values($categories));
+            if ($pos !== false) {
+                $categories = array_merge(
+                    array_slice($categories, 0, $pos + 1),
+                    ['Alternative '.$alternative_category],
+                    array_slice($categories, $pos + 1)
+                );
+            }
+        }
+        return $categories;
+    }
+
     public static function CompressImage($source, $destination, $quality = '75')
     {
         if ($source && $destination) {
@@ -172,6 +187,27 @@ trait Helper
         return LoggerModel::Instance($id, 'customers')->InitializeLogger();
     }
 
+    public static function GetUserIpAddress()
+    {
+        $ipaddress = '';
+        if (getenv('HTTP_CLIENT_IP')) {
+            $ipaddress = getenv('HTTP_CLIENT_IP');
+        } else if (getenv('HTTP_X_FORWARDED_FOR')) {
+            $ipaddress = getenv('HTTP_X_FORWARDED_FOR');
+        } else if (getenv('HTTP_X_FORWARDED')) {
+            $ipaddress = getenv('HTTP_X_FORWARDED');
+        } else if (getenv('HTTP_FORWARDED_FOR')) {
+            $ipaddress = getenv('HTTP_FORWARDED_FOR');
+        } else if (getenv('HTTP_FORWARDED')) {
+            $ipaddress = getenv('HTTP_FORWARDED');
+        } else if (getenv('REMOTE_ADDR')) {
+            $ipaddress = getenv('REMOTE_ADDR');
+        } else {
+            $ipaddress = 'UNKNOWN';
+        }
+
+        return $ipaddress;
+    }
 
     public static function getLicenseExpirationPeriod($years, $months): string
     {
@@ -182,5 +218,15 @@ trait Helper
                 : $months." Month".($months > 1 ? 's' : '')
             : "";
         return $expiration_period;
+    }
+
+    public static function ReturnOnlyNonFalse($args)
+    {
+        foreach ($args as $variable) {
+            if ($variable !== false) {
+                return $variable;
+            }
+        }
+        return false;
     }
 }

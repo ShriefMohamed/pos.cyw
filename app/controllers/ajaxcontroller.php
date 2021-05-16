@@ -31,7 +31,6 @@ use Framework\models\pos\BrandsModel;
 use Framework\models\pos\CategoriesModel;
 use Framework\models\pos\Customers_depositsModel;
 use Framework\models\pos\DiscountsModel;
-use Framework\models\pos\Items_pricingModel;
 use Framework\models\pos\ItemsModel;
 use Framework\models\pos\Payment_methodsModel;
 use Framework\models\pos\Pricing_levelsModel;
@@ -42,8 +41,7 @@ use Framework\models\pos\Tax_classesModel;
 use Framework\models\pos\Vendor_return_reasonsModel;
 use Framework\models\pos\VendorsModel;
 use Framework\models\xero\Xero_accountsModel;
-use XeroAPI\XeroPHP\Models\Accounting\Item;
-use function Matrix\trace;
+
 
 class AjaxController extends AbstractController
 {
@@ -217,9 +215,6 @@ class AjaxController extends AbstractController
                 $inv = new Items_inventoryModel();
                 $inv->Delete("item_id = '$id'");
 
-                $pricing = new Items_pricingModel();
-                $pricing->Delete("item_id = '$id'");
-
                 $this->logger->info("Item was deleted", Helper::AppendLoggedin(['Item UID: ' => $item->uid]));
                 $response = ['status' => 1];
             } else {
@@ -326,19 +321,15 @@ class AjaxController extends AbstractController
         }
     }
 
-    public function Get_items_purchase_ordersAction()
+    public function Get_items_purchase_ordersAction($id)
     {
-        if (Request::Check('id')) {
-            $id = FilterInput::Int(Request::Post('id'));
-
-            $data = Purchase_orders_itemsModel::getOrderItems_itemDetails(
-                "WHERE purchase_orders_items.item_id = '$id' &&
+        $data = Purchase_orders_itemsModel::getOrderItems_itemDetails(
+            "WHERE purchase_orders_items.item_id = '$id' &&
                  (purchase_orders_items.status = 'received' || purchase_orders_items.status = 'completed') 
-                 ORDER BY created DESC"
-            );
+                 GROUP BY purchase_orders_items.order_id ORDER BY created DESC"
+        );
 
-            die(json_encode($data));
-        }
+        die(json_encode($data));
     }
 
     public function Get_taxClassesAction()
@@ -406,33 +397,22 @@ class AjaxController extends AbstractController
 
             // generate uid (first 3 char of the item name)
             $uid = substr($item->item, 0, 3);
-            $uq_number = ItemsModel::generateUniqueNumber() ? ItemsModel::generateUniqueNumber()->random_num : 42561;
+            $uq_number = ItemsModel::generateUniqueNumber();
             $item->uid = strtoupper($uid) . $uq_number;
 
             // generate upc
-            $upc_code = 425667 . sprintf("%05d", ItemsModel::getNextID()->next_id);
+            $upc_code = 425667 . sprintf("%05d", ItemsModel::NextID());
             $item->upc = $upc_code . Helper::CalculateUpcCheckDigit($upc_code);
 
+            $item->buy_price = FilterInput::Float(Request::Post('cost'));
+            $item->rrp_price = FilterInput::Float(Request::Post('price'));
+            $item->rrp_percentage = $item->buy_price && $item->rrp_price ?
+                substr(($item->rrp_price - $item->buy_price) / $item->buy_price * 100 , 0, 3) :
+                0;
+
             if ($item->Save()) {
-                $pricing = new Items_pricingModel();
-                $pricing->item_id = $item->id;
-                $pricing->item_uid = $item->uid;
-                $pricing->buy_price = FilterInput::Float(Request::Post('cost'));
-                $pricing->rrp_price = FilterInput::Float(Request::Post('price'));
-                $pricing->rrp_percentage = $pricing->buy_price && $pricing->rrp_price ?
-                    substr(($pricing->rrp_price - $pricing->buy_price) / $pricing->buy_price * 100 , 0, 3) :
-                    0;
-
-                if ($pricing->Save()) {
-                    $this->logger->info("New Misc Item was created successfully.", Helper::AppendLoggedin(['Item UID' => $item->uid]));
-                    $result = ItemsModel::getItems("WHERE items.id = '$item->id'", true);
-                } else {
-                    $del_item = new ItemsModel();
-                    $del_item->id = $item->id;
-                    $del_item->Delete();
-
-                    $this->logger->info("Failed to create new misc item. Item pricing error!", Helper::AppendLoggedin(['Item UID' => $item->uid]));
-                }
+                $this->logger->info("New Misc Item was created successfully.", Helper::AppendLoggedin(['Item UID' => $item->uid]));
+                $result = ItemsModel::getItems("WHERE items.id = '$item->id'", true);
             } else {
                 $this->logger->info("Failed to create new misc item. Item insert error!", Helper::AppendLoggedin(['Item UID' => $item->uid]));
             }
@@ -921,7 +901,7 @@ class AjaxController extends AbstractController
         }
 
         die(json_encode(array(
-            'where' => $where.$order_by.$limit,
+//            'where' => $where.$order_by.$limit,
             'data' => $data,
             'max_price' => $max_dbp,
             'current_price' => $current_price,
@@ -1032,6 +1012,18 @@ class AjaxController extends AbstractController
 
 
 /* Global Functions*/
+    public function SearchAction()
+    {
+        $key = FilterInput::String(Request::Post('key'));
+        if ($key) {
+            // users, customers, admins
+            // pos stuff
+            // quotes
+            // invoices
+
+        }
+    }
+
     private function DeleteMethod($id, $object)
     {
         $object->id = $id;

@@ -123,6 +123,7 @@ class AbstractController
     }
 
 
+
     /*POS Functions*/
     protected function RegisterCount($purpose)
     {

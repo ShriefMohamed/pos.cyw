@@ -1,6 +1,6 @@
 <?php if (isset($item) && $item != false) : ?>
 <div id="view" style="display: block;">
-    <div class="view">
+    <div class="view item-view_update-view">
         <div class="functions">
             <button title="Save Changes" id="saveButton" class="save">Save Changes</button>
             <button title="Add Label" id="addLabelButton" class="custom_function">Add Label</button>
@@ -12,10 +12,10 @@
             <div class="tabs tab-content">
                 <ul id="tabsMenu" class="tab-labels nav nav-tabs">
                     <li class="details nav-item"><a id="menuDetails" class="nav-link active" href="#tabs-menu-details-link" data-toggle="tab">Details</a></li>
+                    <?php if ($item->is_tracked_as_inventory == 1) : ?>
                     <li class="inventory nav-item"><a id="menuInventory" class="nav-link" href="#tabs-menu-inventory-link" data-toggle="tab">Inventory</a></li>
+                    <?php endif; ?>
                     <li class="sales nav-item"><a id="menuSales" class="nav-link" href="#tabs-menu-sales-link" data-toggle="tab">Sales</a></li>
-                    <li class="layaways nav-item"><a id="menuLayaways" class="nav-link" href="#tabs-menu-layaways-link" data-toggle="tab">Layaways</a></li>
-                    <li class="workorders nav-item"><a id="menuWorkorders" class="nav-link" href="#tabs-menu-workorders-link" data-toggle="tab">Workorders</a></li>
                     <li class="customers nav-item"><a id="menuCustomers" class="nav-link" href="#tabs-menu-customers-link" data-toggle="tab">Customers</a></li>
                     <li class="purchases nav-item"><a id="menuPurchaseOrders" class="nav-link" href="#tabs-menu-purchases-link" data-toggle="tab">Purchase Orders</a></li>
                     <li class="returned nav-item"><a id="menuVendorReturns" class="nav-link" href="#tabs-menu-returned-link" data-toggle="tab">Vendor Returns</a></li>
@@ -25,516 +25,563 @@
                 <article id="tabs-menu-details-link" class="view_tab_details tab tab-pane active">
                     <div class="content">
                         <div class="view-columns">
-                            <table class="view-layout set_auto_focus">
-                                <tbody>
-                                <tr>
-                                    <td>
-                                        <table class="view-column ">
-                                        </table>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td colspan="3">
-                                        <div class="view_group">
-                                            <input type="text" autocomplete="off" size="40" maxlength="255" id="view_item" name="item" class="view_view string data_control" tabindex="1" value="<?= $item->item ?>">
-                                            <input type="text" autocomplete="off" size="40" maxlength="255" id="view_description" name="description" class="view_view string data_control" tabindex="2" value="<?= $item->description ?>">
+                            <form method="post" class="update-item-form" action="<?= HOST_NAME.'pos/item_update/'.$item->id ?>">
+                                <input type="hidden" name="xero_accounts_id" value="<?= $item->items_xero_accounts_id ?>">
+                                <input type="hidden" name="auto_reorder_id" value="<?= $item->items_auto_reorder_id ?>">
 
-                                            <label class="field_label flat-field-input" for="view_function__item_type">Type</label>
-                                            <select name="function__item_type" id="view_function__item_type" class="view_view data_control" tabindex="3">
-                                                <?php
-                                                $single = $box = $assembly = $non_inventory = '';
-                                                $single = $item->item_type == 'single' ? 'selected' : '';
-                                                $box = $item->item_type == 'boc' ? 'selected' : '';
-                                                $assembly = $item->item_type == 'assembly' ? 'selected' : '';
-                                                $non_inventory = $item->item_type == 'non_inventory' ? 'selected' : '';
-                                                ?>
-                                                <option value="single" <?= $single ?>>Single</option>
-                                                <option value="box" <?= $box ?>>Box</option>
-                                                <option value="assembly" <?= $assembly ?>>Assembly</option>
-                                                <option value="non_inventory" <?= $non_inventory ?>>Non-Inventory</option>
-                                            </select>
-                                            <label class="field_label flat-field-input" for="view_function__serialized">Serialized</label>
-                                            <input type="checkbox" name="serialized" id="view_function__serialized" class="view_view boolean data_control" tabindex="4" <?= $item->serialized == 1 ? 'checked' : '' ?>>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <table class="tab_columns">
-                                            <tbody>
-                                            <tr class="view_field_box">
-                                                <td colspan="2" class="view_field_box " id="details_15">
-                                                    <h3>IDs</h3>
-                                                    <table>
-                                                        <tbody>
-                                                        <tr>
-                                                            <td>
-                                                                <table class="tab_columns">
-                                                                    <tbody>
-                                                                    <tr id="view_f_16">
-                                                                        <td class="label">
-                                                                            <label for="view_function__getBikeSoftID">System UID</label>
-                                                                        </td>
-                                                                        <td class="form_field_holder ">
-                                                                            <span id="view_function__getBikeSoftID" style="width: auto; display: inline;" class="view_field_relation"><?= $item->uid ?></span>
-                                                                        </td>
-                                                                    </tr>
-                                                                    <tr id="view_f_17">
-                                                                        <td class="label">
-                                                                            <label for="view_upc">UPC</label>
-                                                                        </td>
-                                                                        <td class="form_field_holder ">
-                                                                            <input type="text" autocomplete="off" value="<?= $item->upc ?>" size="14" maxlength="255" id="view_upc" name="upc" class="view_view string itembarcode scanner-no-submit data_control" tabindex="5">
-                                                                        </td>
-                                                                    </tr>
-                                                                    <tr id="view_f_18">
-                                                                        <td class="label">
-                                                                            <label for="view_shop_sku">Custom SKU</label>
-                                                                        </td>
-                                                                        <td class="form_field_holder ">
-                                                                            <input type="text" autocomplete="off" size="14" maxlength="255" id="view_shop_sku" name="shop_sku" class="view_view string scanner-no-submit data_control" tabindex="6" value="<?= $item->shop_sku ?>">
-                                                                        </td>
-                                                                    </tr>
-                                                                    <tr id="view_f_19">
-                                                                        <td class="label">
-                                                                            <label for="view_man_sku">Manufact. SKU</label>
-                                                                        </td>
-                                                                        <td class="form_field_holder ">
-                                                                            <input type="text" autocomplete="off" size="14" maxlength="255" id="view_man_sku" name="man_sku" class="view_view string scanner-no-submit data_control" tabindex="7" value="<?= $item->man_sku ?>">
-                                                                        </td>
-                                                                    </tr>
-                                                                    </tbody>
-                                                                </table>
-                                                            </td>
-                                                        </tr>
-                                                        </tbody>
-                                                    </table>
-                                                </td>
-                                            </tr>
-                                            <tr class="view_field_box">
-                                                <td colspan="2" class="view_field_box " id="details_22">
-                                                    <h3>Organize</h3>
-                                                    <table>
-                                                        <tbody>
-                                                        <tr>
-                                                            <td>
-                                                                <table class="tab_columns">
-                                                                    <tbody>
-                                                                    <tr id="view_f_32">
-                                                                        <td class="label">
-                                                                            <label for="select2-departments">Department</label>
-                                                                        </td>
-                                                                        <td class="form_field_holder " style="padding-bottom: 10px">
-                                                                            <select id="select2-departments" class="form-control" name="department" tabindex="8">
-                                                                                <option value="0">None</option>
-                                                                                <?php if (isset($departments) && $departments !== false) : ?>
-                                                                                    <?php foreach ($departments as $department) : ?>
-                                                                                        <option <?= $department == $item->department ? 'selected' : '' ?> value="<?= $department ?>"><?= $department ?></option>
-                                                                                    <?php endforeach; ?>
-                                                                                <?php endif; ?>
-                                                                            </select>
-                                                                        </td>
-                                                                    </tr>
-                                                                    <tr id="view_f_31">
-                                                                        <td class="label">
-                                                                            <label for="view_account_id">Xero Account</label>
-                                                                        </td>
-                                                                        <td class="form_field_holder form-group">
-                                                                            <select name="xero_account" id="view_account_id" class="view_view data_control form-control form-round" tabindex="9" style="width: 80%">
-                                                                                <option value="0">None</option>
-                                                                                <?php if (isset($xero_accounts) && $xero_accounts !== false) : ?>
-                                                                                    <?php foreach ($xero_accounts as $xero_account) : ?>
-                                                                                        <option <?= $item->xero_account_id == $xero_account->id ? 'selected' : '' ?> value="<?= $xero_account->id.'|||'.$xero_account->Code ?>"><?= $xero_account->Name.'  ('.$xero_account->Code.')' ?></option>
-                                                                                    <?php endforeach; ?>
-                                                                                <?php endif; ?>
-                                                                            </select>
-                                                                        </td>
-                                                                    </tr>
-                                                                    <tr id="view_f_30">
-                                                                        <td class="label">
-                                                                            <label for="view_category_id">Category</label>
-                                                                        </td>
-                                                                        <td class="form_field_holder form-group">
-                                                                            <select name="category" id="view_category_id" class="view_view data_control form-control form-round" tabindex="10" style="width: 80%">
-                                                                                <option value="0">None</option>
-                                                                                <?php if (isset($categories) && $categories !== false) : ?>
-                                                                                    <?php foreach ($categories as $category) : ?>
-                                                                                        <option <?= $category->id == $item->category ? 'selected' : '' ?> value="<?= $category->id ?>"><?= $category->category ?></option>
-                                                                                    <?php endforeach; ?>
-                                                                                <?php endif; ?>
-                                                                            </select>
-                                                                        </td>
-                                                                    </tr>
-                                                                    <tr id="view_f_31">
-                                                                        <td class="label">
-                                                                            <label for="view_manufacturer_id">Brand</label>
-                                                                        </td>
-                                                                        <td class="form_field_holder form-group">
-                                                                            <select name="brand" id="view_brand_id" class="view_view data_control form-control form-round" tabindex="11" style="width: 80%">
-                                                                                <option value="0">None</option>
-                                                                                <?php if (isset($brands) && $brands !== false) : ?>
-                                                                                    <?php foreach ($brands as $brand) : ?>
-                                                                                        <option <?= $brand->id == $item->brand ? 'selected' : '' ?> value="<?= $brand->id ?>"><?= $brand->brand ?></option>
-                                                                                    <?php endforeach; ?>
-                                                                                <?php endif; ?>
-                                                                            </select>
-                                                                        </td>
-                                                                    </tr>
-                                                                    <tr id="view_f_32">
-                                                                        <td class="label">
-                                                                            <label for="select2-tags">Tags</label>
-                                                                        </td>
-                                                                        <td class="form_field_holder " style="padding-bottom: 10px">
-                                                                            <select id="select2-tags" class="form-control" multiple="multiple" name="tags[]">
-                                                                                <?php if (isset($tags) && $tags != false) : ?>
-                                                                                    <?php foreach ($tags as $tag) : ?>
-                                                                                        <?php $o_tags = explode(',', $item->tags); ?>
-                                                                                        <option <?= in_array($tag, $o_tags) ? 'selected' : '' ?> value="<?= $tag ?>"><?= $tag ?></option>
-                                                                                    <?php endforeach; ?>
-                                                                                <?php endif; ?>
-                                                                            </select>
-                                                                        </td>
-                                                                    </tr>
-                                                                    </tbody>
-                                                                </table>
-                                                            </td>
-                                                        </tr>
-                                                        </tbody>
-                                                    </table>
-                                                </td>
-                                            </tr>
-                                            </tbody>
-                                        </table>
-                                    </td>
-                                    <td>
-                                        <table class="view-column ">
-                                            <tbody>
-                                            <tr class="view_field_box">
-                                                <td colspan="2" class="view_field_box " id="details_40">
-                                                    <h3>Inventory Buy Price Inc. GST</h3>
-                                                    <table>
-                                                        <tbody>
-                                                        <tr>
-                                                            <td>
-                                                                <table class="tab_columns">
-                                                                    <tbody>
-                                                                    <tr id="view_f_41">
-                                                                        <td class="label">
-                                                                            <label for="view_default_cost">Dealer Buy Price Inc. GST</label>
-                                                                        </td>
-                                                                        <td class="form_field_holder ">
-                                                                            <div class="money-field-container">
-                                                                                <input type="text" autocomplete="off" maxlength="15" id="view_default_cost" name="buy_price" class="view_view money data_control" placeholder="Dealer Buy Price Inc. GST" tabindex="40" required value="<?= $item->buy_price ?>">
-                                                                            </div>
-                                                                        </td>
-                                                                    </tr>
-                                                                    <tr id="view_f_41">
-                                                                        <td class="label">
-                                                                            <label for="view_default_percentage">RRP Percentage</label>
-                                                                        </td>
-                                                                        <td class="form_field_holder ">
-                                                                            <div class="percent-field-container">
-                                                                                <input type="text" autocomplete="off" maxlength="15" id="view_default_percentage" name="rrp_percentage" class="view_view money data_control" placeholder="RRP Percentage" tabindex="41" required value="<?= $item->rrp_percentage ?>">
-                                                                            </div>
-                                                                        </td>
-                                                                    </tr>
-                                                                    <tr id="view_f_42">
-                                                                        <td class="label">
-                                                                            <label for="view_vendor_id">Vendor</label>
-                                                                        </td>
-                                                                        <td class="form_field_holder ">
-                                                                            <select name="vendor" id="view_vendor_id" class="view_view data_control" tabindex="42">
-                                                                                <option value="0">None</option>
-                                                                                <?php if (isset($vendors) && $vendors !== false) : ?>
-                                                                                    <?php foreach ($vendors as $vendor) : ?>
-                                                                                        <option <?= $vendor->id == $item->vendor_id ? 'selected' : '' ?> value="<?= $vendor->id ?>"><?= $vendor->name ?></option>
-                                                                                    <?php endforeach; ?>
-                                                                                <?php endif; ?>
-                                                                            </select>
-                                                                        </td>
-                                                                    </tr>
-                                                                    </tbody>
-                                                                </table>
-                                                            </td>
-                                                        </tr>
-                                                        </tbody>
-                                                    </table>
-                                                </td>
-                                            </tr>
-                                            <tr class="view_field_box">
-                                                <td colspan="2" class="view_field_box " id="item-pricing">
-                                                    <h3>Pricing</h3>
-                                                    <table class="product-prices">
-                                                        <thead>
-                                                        <tr>
-                                                            <th>Name</th>
-                                                            <th>Price</th>
-                                                            <th class="markup">Margin</th>
-                                                        </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                        <?php if (isset($pricing_levels) && $pricing_levels !== false) : ?>
-                                                            <?php foreach ($pricing_levels as $pricing_level) : ?>
-                                                                <tr class="pricing-level pricing-level-<?= $pricing_level->id ?> <?= $pricing_level->teir == 'TEIR 2'? "teir2" : '' ?>" data-rate="<?= $pricing_level->rate ?>">
-                                                                    <th><?= $pricing_level->teir ?></th>
-                                                                    <td class="price">
-                                                                        <input tabindex="43" id="view_price_default" type="text" class="money pricelevel" value="0.00" name="prices[]" disabled>
-                                                                    </td>
-                                                                    <td class="margin"></td>
-                                                                </tr>
-                                                            <?php endforeach; ?>
-                                                        <?php endif; ?>
-
-                                                        <tr class="pricing-level-rrp">
-                                                            <th>RRP</th>
-                                                            <td class="price default-linked">
-                                                                <input tabindex="44" id="view_price_rrp" type="text" class="money pricelevel" name="rrp_price" required value="<?= $item->rrp_price ?>">
-                                                            </td>
-                                                            <td class="margin"></td>
-                                                        </tr>
-                                                        </tbody>
-                                                    </table>
-                                                    <div class="price-settings">
-                                                        <div class="price-setting">
-                                                            <label class="checkbox">
-                                                                <input type="checkbox" id="discountable_checkbox" name="discountable" class="boolean" <?= $item->discountable == 1 ? 'checked' : '' ?>> Discounts Allowed
-                                                            </label>
-                                                        </div>
-                                                        <div class="price-setting">
-                                                            <label for="class_id" class="select">Tax Class</label>
-                                                            <select name="tax_class" id="tax_class_dropdown" tabindex="45">
-                                                                <option value="0">None</option>
-                                                                <?php if (isset($tax_classes) && $tax_classes !== false) : ?>
-                                                                    <?php foreach ($tax_classes as $tax_class) : ?>
-                                                                        <option <?= $tax_class->id == $item->tax_class ? 'selected' : '' ?> value="<?= $tax_class->id ?>"><?= $tax_class->class.' ('.$tax_class->rate.'%)' ?></option>
-                                                                    <?php endforeach; ?>
-                                                                <?php endif; ?>
-                                                            </select>
+                                <table class="view-layout set_auto_focus">
+                                    <tbody>
+                                    <tr>
+                                        <td>
+                                            <table class="view-column ">
+                                            </table>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="3">
+                                            <div class="view_group">
+                                                <div class="row" style="padding: 0">
+                                                    <div class="col-md-7">
+                                                        <div class="row" style="padding: 0">
+                                                            <div class="col-md-6">
+                                                                <input type="text" autocomplete="off" size="40" maxlength="255" id="view_item" name="item" class="form-control" placeholder="Item" tabindex="1" value="<?= htmlentities($item->item) ?>">
+                                                            </div>
+                                                            <div class="col-md-6">
+                                                                <input type="text" autocomplete="off" size="40" maxlength="255" id="view_description" name="description" class="form-control" placeholder="Description" tabindex="2" value="<?= htmlentities($item->description) ?>">
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </td>
-                                            </tr>
+                                                    <div class="col-md-5">
+                                                        <label class="field_label flat-field-input" for="view_function__IsTrackedAsInventory1" data-toggle="tooltip" data-placement="top" title="This treats your item as a tracked inventory asset. System will record the quantity on hand and prevent you selling below a quantity of zero.">
+                                                            <input type="checkbox" name="is_tracked_as_inventory" id="view_function__IsTrackedAsInventory1" class="view_view boolean data_control" tabindex="2" <?= $item->is_tracked_as_inventory == 1 ? 'checked' : '' ?>>
+                                                            Tracked As Inventory
+                                                        </label>
 
-                                            <tr class="view_field_box">
-                                                <td colspan="2" class="view_field_box " id="details_44">
-                                                    <h3>Automatic Re-Ordering</h3>
-                                                    <table>
-                                                        <tbody>
-                                                        <tr>
-                                                            <td>
-                                                                <table class="tab_columns">
-                                                                    <tbody>
-                                                                    <tr id="view_f_45">
-                                                                        <td class="label">
-                                                                            <label for="view_function__reorder_btn">Automatic Re-Ordering</label>
+                                                        <label class="field_label flat-field-input" for="view_function__item_type">Type</label>
+                                                        <select name="item_type" id="view_function__item_type" class="view_view data_control" tabindex="3">
+                                                            <option value="single" <?= $item->item_type == 'single' ? 'selected' : '' ?>>Single</option>
+                                                            <option value="box" <?= $item->item_type == 'box' ? 'selected' : '' ?>>Box</option>
+                                                            <option value="assembly" <?= $item->item_type == 'assembly' ? 'selected' : '' ?>>Assembly</option>
+                                                        </select>
+
+                                                        <label class="field_label flat-field-input" for="view_function__serialized">
+                                                            <input type="checkbox" name="serialized" id="view_function__serialized" class="view_view boolean data_control" tabindex="4" <?= $item->serialized == 1 ? 'checked' : '' ?>>
+                                                            Serialized
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <table class="tab_columns">
+                                                <tbody>
+                                                <tr class="view_field_box">
+                                                    <td colspan="2" class="view_field_box " id="details_15">
+                                                        <h3>IDs</h3>
+                                                        <table>
+                                                            <tbody>
+                                                            <tr>
+                                                                <td>
+                                                                    <table class="tab_columns">
+                                                                        <tbody>
+                                                                        <tr id="view_f_16">
+                                                                            <td class="label">
+                                                                                <label for="view_function__getBikeSoftID">System UID</label>
+                                                                            </td>
+                                                                            <td class="form_field_holder ">
+                                                                                <span id="view_function__getBikeSoftID" style="width: auto; display: inline;" class="view_field_relation"><?= $item->uid ?></span>
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr id="view_f_17">
+                                                                            <td class="label">
+                                                                                <label for="view_upc">UPC</label>
+                                                                            </td>
+                                                                            <td class="form_field_holder ">
+                                                                                <input type="text" autocomplete="off" value="<?= $item->upc ?>" size="14" maxlength="255" id="view_upc" name="upc" class="view_view string itembarcode scanner-no-submit data_control" tabindex="5">
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr id="view_f_18">
+                                                                            <td class="label">
+                                                                                <label for="view_shop_sku">Custom SKU</label>
+                                                                            </td>
+                                                                            <td class="form_field_holder ">
+                                                                                <input type="text" autocomplete="off" size="14" maxlength="255" id="view_shop_sku" name="shop_sku" class="view_view string scanner-no-submit data_control" tabindex="6" value="<?= $item->shop_sku ?>">
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr id="view_f_19">
+                                                                            <td class="label">
+                                                                                <label for="view_man_sku">Manufact. SKU</label>
+                                                                            </td>
+                                                                            <td class="form_field_holder ">
+                                                                                <input type="text" autocomplete="off" size="14" maxlength="255" id="view_man_sku" name="man_sku" class="view_view string scanner-no-submit data_control" tabindex="7" value="<?= $item->man_sku ?>">
+                                                                            </td>
+                                                                        </tr>
+                                                                        </tbody>
+                                                                    </table>
+                                                                </td>
+                                                            </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                                <tr class="view_field_box">
+                                                    <td colspan="2" class="view_field_box " id="details_22">
+                                                        <h3>Organize</h3>
+                                                        <table>
+                                                            <tbody>
+                                                            <tr>
+                                                                <td>
+                                                                    <table class="tab_columns">
+                                                                        <tbody>
+                                                                        <tr id="view_f_32">
+                                                                            <td class="label">
+                                                                                <label for="select2-departments">Department</label>
+                                                                            </td>
+                                                                            <td class="form_field_holder " style="padding-bottom: 10px">
+                                                                                <select id="select2-departments" class="form-control" name="department" tabindex="8">
+                                                                                    <option value="0">None</option>
+                                                                                    <?php if (isset($departments) && $departments !== false) : ?>
+                                                                                        <?php foreach ($departments as $department) : ?>
+                                                                                            <option <?= $department == $item->department ? 'selected' : '' ?> value="<?= $department ?>"><?= $department ?></option>
+                                                                                        <?php endforeach; ?>
+                                                                                    <?php endif; ?>
+                                                                                </select>
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr id="view_f_31">
+                                                                            <td class="label">
+                                                                                <label for="view_account_id">Xero Inventory Asset Account</label>
+                                                                            </td>
+                                                                            <td class="form_field_holder form-group">
+                                                                                <select name="xero_ia_account" id="view_account_id" class="view_view data_control form-control form-round" tabindex="9" style="width: 80%">
+                                                                                    <option value="0">None</option>
+                                                                                    <?php if (isset($xero_accounts) && $xero_accounts !== false) : ?>
+                                                                                        <?php foreach ($xero_accounts as $xero_account) : ?>
+                                                                                            <option <?= $xero_account->id == $item->inventory_asset_xero_account_id ? 'selected' : '' ?> value="<?= $xero_account->id.'|||'.$xero_account->Code ?>"><?= $xero_account->Name.'  ('.$xero_account->Code.')' ?></option>
+                                                                                        <?php endforeach; ?>
+                                                                                    <?php endif; ?>
+                                                                                </select>
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr id="view_f_31">
+                                                                            <td class="label">
+                                                                                <label for="view_account_id">Xero Purchase Account</label>
+                                                                            </td>
+                                                                            <td class="form_field_holder form-group">
+                                                                                <select name="xero_p_account" id="view_account_id" class="view_view data_control form-control form-round" tabindex="9" style="width: 80%">
+                                                                                    <option value="0">None</option>
+                                                                                    <?php if (isset($xero_accounts) && $xero_accounts !== false) : ?>
+                                                                                        <?php foreach ($xero_accounts as $xero_account) : ?>
+                                                                                            <option <?= $xero_account->id == $item->purchase_xero_account_id ? 'selected' : '' ?> value="<?= $xero_account->id.'|||'.$xero_account->Code ?>"><?= $xero_account->Name.'  ('.$xero_account->Code.')' ?></option>
+                                                                                        <?php endforeach; ?>
+                                                                                    <?php endif; ?>
+                                                                                </select>
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr id="view_f_31">
+                                                                            <td class="label">
+                                                                                <label for="view_account_id">Xero Sales Account</label>
+                                                                            </td>
+                                                                            <td class="form_field_holder form-group">
+                                                                                <select name="xero_s_account" id="view_account_id" class="view_view data_control form-control form-round" tabindex="9" style="width: 80%">
+                                                                                    <option value="0">None</option>
+                                                                                    <?php if (isset($xero_accounts) && $xero_accounts !== false) : ?>
+                                                                                        <?php foreach ($xero_accounts as $xero_account) : ?>
+                                                                                            <option <?= $xero_account->id == $item->sales_xero_account_id ? 'selected' : '' ?> value="<?= $xero_account->id.'|||'.$xero_account->Code ?>"><?= $xero_account->Name.'  ('.$xero_account->Code.')' ?></option>
+                                                                                        <?php endforeach; ?>
+                                                                                    <?php endif; ?>
+                                                                                </select>
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr id="view_f_30">
+                                                                            <td class="label">
+                                                                                <label for="view_category_id">Category</label>
+                                                                            </td>
+                                                                            <td class="form_field_holder form-group">
+                                                                                <select name="category" id="view_category_id" class="view_view data_control form-control form-round" tabindex="10" style="width: 80%">
+                                                                                    <option value="0">None</option>
+                                                                                    <?php if (isset($categories) && $categories !== false) : ?>
+                                                                                        <?php foreach ($categories as $category) : ?>
+                                                                                            <option <?= $category->id == $item->category ? 'selected' : '' ?> value="<?= $category->id ?>"><?= $category->category ?></option>
+                                                                                        <?php endforeach; ?>
+                                                                                    <?php endif; ?>
+                                                                                </select>
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr id="view_f_31">
+                                                                            <td class="label">
+                                                                                <label for="view_manufacturer_id">Brand</label>
+                                                                            </td>
+                                                                            <td class="form_field_holder form-group">
+                                                                                <select name="brand" id="view_brand_id" class="view_view data_control form-control form-round" tabindex="11" style="width: 80%">
+                                                                                    <option value="0">None</option>
+                                                                                    <?php if (isset($brands) && $brands !== false) : ?>
+                                                                                        <?php foreach ($brands as $brand) : ?>
+                                                                                            <option <?= $brand->id == $item->brand ? 'selected' : '' ?> value="<?= $brand->id ?>"><?= $brand->brand ?></option>
+                                                                                        <?php endforeach; ?>
+                                                                                    <?php endif; ?>
+                                                                                </select>
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr id="view_f_32">
+                                                                            <td class="label">
+                                                                                <label for="select2-tags">Tags</label>
+                                                                            </td>
+                                                                            <td class="form_field_holder " style="padding-bottom: 10px">
+                                                                                <select id="select2-tags" class="form-control" multiple="multiple" name="tags[]">
+                                                                                    <?php if (isset($tags) && $tags != false) : ?>
+                                                                                        <?php foreach ($tags as $tag) : ?>
+                                                                                            <?php $o_tags = explode(',', $item->tags); ?>
+                                                                                            <option <?= in_array($tag, $o_tags) ? 'selected' : '' ?> value="<?= $tag ?>"><?= $tag ?></option>
+                                                                                        <?php endforeach; ?>
+                                                                                    <?php endif; ?>
+                                                                                </select>
+                                                                            </td>
+                                                                        </tr>
+                                                                        </tbody>
+                                                                    </table>
+                                                                </td>
+                                                            </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                                </tbody>
+                                            </table>
+                                        </td>
+                                        <td>
+                                            <table class="view-column ">
+                                                <tbody>
+                                                <tr class="view_field_box">
+                                                    <td colspan="2" class="view_field_box " id="details_40">
+                                                        <h3>Inventory Buy Price Inc. GST</h3>
+                                                        <table>
+                                                            <tbody>
+                                                            <tr>
+                                                                <td>
+                                                                    <table class="tab_columns">
+                                                                        <tbody>
+                                                                        <tr id="view_f_41">
+                                                                            <td class="label">
+                                                                                <label for="view_default_cost">Dealer Buy Price Inc. GST</label>
+                                                                            </td>
+                                                                            <td class="form_field_holder ">
+                                                                                <div class="money-field-container">
+                                                                                    <input type="text" autocomplete="off" maxlength="15" id="view_default_cost" name="buy_price" class="view_view money data_control" placeholder="Dealer Buy Price Inc. GST" tabindex="40" required value="<?= $item->buy_price ?>">
+                                                                                </div>
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr id="view_f_41">
+                                                                            <td class="label">
+                                                                                <label for="view_default_percentage">RRP Percentage</label>
+                                                                            </td>
+                                                                            <td class="form_field_holder ">
+                                                                                <div class="percent-field-container">
+                                                                                    <input type="text" autocomplete="off" maxlength="15" id="view_default_percentage" name="rrp_percentage" class="view_view money data_control" placeholder="RRP Percentage" tabindex="41" required value="<?= $item->rrp_percentage ?>">
+                                                                                </div>
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr id="view_f_42">
+                                                                            <td class="label">
+                                                                                <label for="view_vendor_id">Vendor</label>
+                                                                            </td>
+                                                                            <td class="form_field_holder ">
+                                                                                <select name="vendor" id="view_vendor_id" class="view_view data_control" tabindex="42">
+                                                                                    <option value="0">None</option>
+                                                                                    <?php if (isset($vendors) && $vendors !== false) : ?>
+                                                                                        <?php foreach ($vendors as $vendor) : ?>
+                                                                                            <option <?= $vendor->id == $item->vendor_id ? 'selected' : '' ?> value="<?= $vendor->id ?>"><?= $vendor->name ?></option>
+                                                                                        <?php endforeach; ?>
+                                                                                    <?php endif; ?>
+                                                                                </select>
+                                                                            </td>
+                                                                        </tr>
+                                                                        </tbody>
+                                                                    </table>
+                                                                </td>
+                                                            </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                                <tr class="view_field_box">
+                                                    <td colspan="2" class="view_field_box " id="item-pricing">
+                                                        <h3>Pricing</h3>
+                                                        <table class="product-prices">
+                                                            <thead>
+                                                            <tr>
+                                                                <th>Name</th>
+                                                                <th>Price</th>
+                                                                <th class="markup">Margin</th>
+                                                            </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                            <?php if (isset($pricing_levels) && $pricing_levels !== false) : ?>
+                                                                <?php foreach ($pricing_levels as $pricing_level) : ?>
+                                                                    <tr class="pricing-level pricing-level-<?= $pricing_level->id ?> <?= $pricing_level->teir == 'TEIR 2'? "teir2" : '' ?>" data-rate="<?= $pricing_level->rate ?>">
+                                                                        <th><?= $pricing_level->teir ?></th>
+                                                                        <td class="price">
+                                                                            <input tabindex="43" id="view_price_default" type="text" class="money pricelevel" value="0.00" name="prices[]" disabled>
                                                                         </td>
-                                                                        <td class="form_field_holder ">
-                                                                            <input type="checkbox" id="view_function__reorder_btn" name="auto_reorder" class="view_view number data_control" <?= $item->auto_reorder == 1 ? 'checked' : '' ?>>
-                                                                        </td>
+                                                                        <td class="margin"></td>
                                                                     </tr>
-                                                                    <tr id="view_f_45">
-                                                                        <td class="label">
-                                                                            <label for="view_function__reorder_pnt">Reorder Point</label>
-                                                                        </td>
-                                                                        <td class="form_field_holder ">
-                                                                            <input type="text" autocomplete="off" size="6" maxlength="15" id="view_function__reorder_pnt" name="reorder_point" class="view_view number data_control" placeholder="Reorder Point" tabindex="42" value="<?= $item->reorder_point ? $item->reorder_point : 0 ?>">
-                                                                        </td>
-                                                                    </tr>
-                                                                    <tr id="view_f_46">
-                                                                        <td class="label">
-                                                                            <label for="view_function__reorder_lvl">Desired Inventory Level</label>
-                                                                        </td>
-                                                                        <td class="form_field_holder ">
-                                                                            <input type="text" autocomplete="off" size="6" maxlength="15" id="view_function__reorder_lvl" name="reorder_level" class="view_view number data_control" tabindex="43" value="<?= $item->reorder_level ? $item->reorder_level : 0 ?>">
-                                                                        </td>
-                                                                    </tr>
-                                                                    </tbody>
-                                                                </table>
-                                                            </td>
-                                                        </tr>
-                                                        </tbody>
-                                                    </table>
-                                                </td>
-                                            </tr>
-                                            </tbody>
-                                        </table>
-                                    </td>
-                                    <td>
-                                        <table class="view-column ">
-                                            <tbody>
-                                            <tr class="view_field_box">
-                                                <td colspan="2" class="view_field_box " id="details_42">
-                                                    <h3>Stock</h3>
-                                                    <table>
-                                                        <tbody>
-                                                        <tr>
-                                                            <td>
-                                                                <table class="tab_columns">
-                                                                    <tbody>
-                                                                    <tr id="view_f_43">
-                                                                        <td class="label">
-                                                                            <label for="view_function__getInStock_details">In Stock</label>
-                                                                        </td>
-                                                                        <td class="form_field_holder ">
-                                                                            <span id="view_function__getInStock_details" style="width: auto; display: inline;" class="view_field_relation" ><?= $item->available_stock ?></span>
-                                                                        </td>
-                                                                    </tr>
-                                                                    <tr id="view_f_44">
-                                                                        <td class="label">
-                                                                            <label for="function__getAvgCost_details">Avg. Cost</label>
-                                                                        </td>
-                                                                        <td class="form_field_holder ">
-                                                                            <span id="function__getAvgCost_details" style="width: auto; display: inline;" class="view_field_relation">$<?= isset($item_avg_price->avg_buy_price) && $item_avg_price->avg_buy_price ? number_format(substr($item_avg_price->avg_buy_price, 0, 5), 2) : 0 ?></span>
-                                                                        </td>
-                                                                    </tr>
-                                                                    </tbody>
-                                                                </table>
-                                                            </td>
-                                                        </tr>
-                                                        </tbody>
-                                                    </table>
-                                                </td>
-                                            </tr>
-                                            <tr class="view_field_box">
-                                                <td colspan="2" class="view_field_box " id="details_46">
-                                                    <h3>Orders</h3>
-                                                    <table>
-                                                        <tbody>
-                                                        <tr>
-                                                            <td>
-                                                                <table class="tab_columns">
-                                                                    <tbody>
-                                                                    <tr id="view_f_47">
-                                                                        <td class="label">
-                                                                            <label for="view_function__getLayaway">Layaway</label>
-                                                                        </td>
-                                                                        <td class="form_field_holder ">
-                                                                     <span id="view_function__getLayaway" style="width: auto; display: inline;" class="view_field_relation">0</span>
-                                                                        </td>
-                                                                    </tr>
-                                                                    <tr id="view_f_48">
-                                                                        <td class="label">
-                                                                            <label for="view_function__getSpecialOrder">
-                                                                                Special Order
-                                                                            </label>
-                                                                        </td>
-                                                                        <td class="form_field_holder ">
+                                                                <?php endforeach; ?>
+                                                            <?php endif; ?>
+
+                                                            <tr class="pricing-level-rrp">
+                                                                <th>RRP</th>
+                                                                <td class="price default-linked">
+                                                                    <input tabindex="44" id="view_price_rrp" type="text" class="money pricelevel" name="rrp_price" required value="<?= $item->rrp_price ?>">
+                                                                </td>
+                                                                <td class="margin"></td>
+                                                            </tr>
+                                                            </tbody>
+                                                        </table>
+                                                        <div class="price-settings">
+                                                            <div class="price-setting">
+                                                                <label class="checkbox">
+                                                                    <input type="checkbox" id="discountable_checkbox" name="discountable" class="boolean" <?= $item->discountable == 1 ? 'checked' : '' ?>> Discounts Allowed
+                                                                </label>
+                                                            </div>
+                                                            <div class="price-setting">
+                                                                <label for="class_id" class="select">Tax Class</label>
+                                                                <select name="tax_class" id="tax_class_dropdown" tabindex="45">
+                                                                    <option value="0">None</option>
+                                                                    <?php if (isset($tax_classes) && $tax_classes !== false) : ?>
+                                                                        <?php foreach ($tax_classes as $tax_class) : ?>
+                                                                            <option <?= $tax_class->id == $item->tax_class ? 'selected' : '' ?> value="<?= $tax_class->id ?>"><?= $tax_class->class.' ('.$tax_class->rate.'%)' ?></option>
+                                                                        <?php endforeach; ?>
+                                                                    <?php endif; ?>
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+
+                                                <tr class="view_field_box">
+                                                    <td colspan="2" class="view_field_box " id="details_44">
+                                                        <h3>Automatic Re-Ordering</h3>
+                                                        <table>
+                                                            <tbody>
+                                                            <tr>
+                                                                <td>
+                                                                    <table class="tab_columns">
+                                                                        <tbody>
+                                                                        <tr id="view_f_45">
+                                                                            <td class="label">
+                                                                                <label for="view_function__reorder_btn">Automatic Re-Ordering</label>
+                                                                            </td>
+                                                                            <td class="form_field_holder ">
+                                                                                <input type="checkbox" id="view_function__reorder_btn" name="auto_reorder" class="view_view number data_control" <?= $item->auto_reorder == 1 ? 'checked' : '' ?>>
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr id="view_f_45">
+                                                                            <td class="label">
+                                                                                <label for="view_function__reorder_pnt">Reorder Point</label>
+                                                                            </td>
+                                                                            <td class="form_field_holder ">
+                                                                                <input type="text" autocomplete="off" size="6" maxlength="15" id="view_function__reorder_pnt" name="reorder_point" class="view_view number data_control" placeholder="Reorder Point" tabindex="42" value="<?= $item->reorder_point ? $item->reorder_point : 0 ?>">
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr id="view_f_46">
+                                                                            <td class="label">
+                                                                                <label for="view_function__reorder_lvl">Desired Inventory Level</label>
+                                                                            </td>
+                                                                            <td class="form_field_holder ">
+                                                                                <input type="text" autocomplete="off" size="6" maxlength="15" id="view_function__reorder_lvl" name="reorder_level" class="view_view number data_control" tabindex="43" value="<?= $item->reorder_level ? $item->reorder_level : 0 ?>">
+                                                                            </td>
+                                                                        </tr>
+                                                                        </tbody>
+                                                                    </table>
+                                                                </td>
+                                                            </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                                </tbody>
+                                            </table>
+                                        </td>
+                                        <td>
+                                            <table class="view-column ">
+                                                <tbody>
+                                                <tr class="view_field_box">
+                                                    <td colspan="2" class="view_field_box " id="details_42">
+                                                        <h3>Stock</h3>
+                                                        <table>
+                                                            <tbody>
+                                                            <tr>
+                                                                <td>
+                                                                    <table class="tab_columns">
+                                                                        <tbody>
+                                                                        <tr id="view_f_43">
+                                                                            <td class="label">
+                                                                                <label for="view_function__getInStock_details">In Stock</label>
+                                                                            </td>
+                                                                            <td class="form_field_holder ">
+                                                                                <span id="view_function__getInStock_details" style="width: auto; display: inline;" class="view_field_relation" ><?= $item->available_stock ?></span>
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr id="view_f_44">
+                                                                            <td class="label">
+                                                                                <label for="function__getAvgCost_details">Avg. Cost</label>
+                                                                            </td>
+                                                                            <td class="form_field_holder ">
+                                                                                <span id="function__getAvgCost_details" style="width: auto; display: inline;" class="view_field_relation">$<?= isset($item_avg_price->avg_buy_price) && $item_avg_price->avg_buy_price ? number_format(substr($item_avg_price->avg_buy_price, 0, 5), 2) : 0 ?></span>
+                                                                            </td>
+                                                                        </tr>
+                                                                        </tbody>
+                                                                    </table>
+                                                                </td>
+                                                            </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                                <tr class="view_field_box">
+                                                    <td colspan="2" class="view_field_box " id="details_46">
+                                                        <h3>Orders</h3>
+                                                        <table>
+                                                            <tbody>
+                                                            <tr>
+                                                                <td>
+                                                                    <table class="tab_columns">
+                                                                        <tbody>
+                                                                        <tr id="view_f_47">
+                                                                            <td class="label">
+                                                                                <label for="view_function__getLayaway">Layaway</label>
+                                                                            </td>
+                                                                            <td class="form_field_holder ">
+                                                                                <span id="view_function__getLayaway" style="width: auto; display: inline;" class="view_field_relation">0</span>
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr id="view_f_48">
+                                                                            <td class="label">
+                                                                                <label for="view_function__getSpecialOrder">
+                                                                                    Special Order
+                                                                                </label>
+                                                                            </td>
+                                                                            <td class="form_field_holder ">
                                                                      <span id="view_function__getSpecialOrder" style="width: auto; display: inline;" class="view_field_relation">
                                                                      0</span>
-                                                                        </td>
-                                                                    </tr>
-                                                                    <tr id="view_f_49">
-                                                                        <td class="label">
-                                                                            <label for="view_function__getBackOrder">
-                                                                                On Order
-                                                                            </label>
-                                                                        </td>
-                                                                        <td class="form_field_holder ">
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr id="view_f_49">
+                                                                            <td class="label">
+                                                                                <label for="view_function__getBackOrder">
+                                                                                    On Order
+                                                                                </label>
+                                                                            </td>
+                                                                            <td class="form_field_holder ">
                                                                      <span id="view_function__getBackOrder" style="width: auto; display: inline;" class="view_field_relation">
                                                                      0</span>
-                                                                        </td>
-                                                                    </tr>
-                                                                    <tr id="view_f_50">
-                                                                        <td class="label">
-                                                                            <label for="view_function__getSentVendorReturnQty">
-                                                                                Pending Return
-                                                                            </label>
-                                                                        </td>
-                                                                        <td class="form_field_holder ">
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr id="view_f_50">
+                                                                            <td class="label">
+                                                                                <label for="view_function__getSentVendorReturnQty">
+                                                                                    Pending Return
+                                                                                </label>
+                                                                            </td>
+                                                                            <td class="form_field_holder ">
                                                                      <span id="view_function__getSentVendorReturnQty" style="width: auto; display: inline;" class="view_field_relation">
                                                                      0</span>
-                                                                        </td>
-                                                                    </tr>
-                                                                    </tbody>
-                                                                </table>
-                                                            </td>
-                                                        </tr>
-                                                        </tbody>
-                                                    </table>
-                                                </td>
-                                            </tr>
-                                            <tr class="view_field_box">
-                                                <td colspan="2" class="view_field_box " id="details_52">
-                                                    <h3>Sales History</h3>
-                                                    <table>
-                                                        <tbody>
-                                                        <tr>
-                                                            <td>
-                                                                <table class="tab_columns">
-                                                                    <tbody>
-                                                                    <tr id="view_f_53">
-                                                                        <td class="label">
-                                                                            <label for="view_function__getItemSalesDay">
-                                                                                Day
-                                                                            </label>
-                                                                        </td>
-                                                                        <td class="form_field_holder ">
+                                                                            </td>
+                                                                        </tr>
+                                                                        </tbody>
+                                                                    </table>
+                                                                </td>
+                                                            </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                                <tr class="view_field_box">
+                                                    <td colspan="2" class="view_field_box " id="details_52">
+                                                        <h3>Sales History</h3>
+                                                        <table>
+                                                            <tbody>
+                                                            <tr>
+                                                                <td>
+                                                                    <table class="tab_columns">
+                                                                        <tbody>
+                                                                        <tr id="view_f_53">
+                                                                            <td class="label">
+                                                                                <label for="view_function__getItemSalesDay">
+                                                                                    Day
+                                                                                </label>
+                                                                            </td>
+                                                                            <td class="form_field_holder ">
                                                                      <span id="view_function__getItemSalesDay" style="width: auto; display: inline;" class="view_field_relation">
                                                                      0</span>
-                                                                        </td>
-                                                                    </tr>
-                                                                    <tr id="view_f_54">
-                                                                        <td class="label">
-                                                                            <label for="view_function__getItemSalesWeek">
-                                                                                Week
-                                                                            </label>
-                                                                        </td>
-                                                                        <td class="form_field_holder ">
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr id="view_f_54">
+                                                                            <td class="label">
+                                                                                <label for="view_function__getItemSalesWeek">
+                                                                                    Week
+                                                                                </label>
+                                                                            </td>
+                                                                            <td class="form_field_holder ">
                                                                      <span id="view_function__getItemSalesWeek" style="width: auto; display: inline;" class="view_field_relation">
                                                                      0</span>
-                                                                        </td>
-                                                                    </tr>
-                                                                    <tr id="view_f_55">
-                                                                        <td class="label">
-                                                                            <label for="view_function__getItemSalesMonth">
-                                                                                Month
-                                                                            </label>
-                                                                        </td>
-                                                                        <td class="form_field_holder ">
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr id="view_f_55">
+                                                                            <td class="label">
+                                                                                <label for="view_function__getItemSalesMonth">
+                                                                                    Month
+                                                                                </label>
+                                                                            </td>
+                                                                            <td class="form_field_holder ">
                                                                      <span id="view_function__getItemSalesMonth" style="width: auto; display: inline;" class="view_field_relation">
                                                                      0</span>
-                                                                        </td>
-                                                                    </tr>
-                                                                    <tr id="view_f_56">
-                                                                        <td class="label">
-                                                                            <label for="view_function__getItemSalesYear">
-                                                                                Year
-                                                                            </label>
-                                                                        </td>
-                                                                        <td class="form_field_holder ">
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr id="view_f_56">
+                                                                            <td class="label">
+                                                                                <label for="view_function__getItemSalesYear">
+                                                                                    Year
+                                                                                </label>
+                                                                            </td>
+                                                                            <td class="form_field_holder ">
                                                                      <span id="view_function__getItemSalesYear" style="width: auto; display: inline;" class="view_field_relation">
                                                                      0</span>
-                                                                        </td>
-                                                                    </tr>
-                                                                    <tr id="view_f_57">
-                                                                        <td class="label">
-                                                                            <label for="view_function__getItemSalesAll">
-                                                                                All
-                                                                            </label>
-                                                                        </td>
-                                                                        <td class="form_field_holder ">
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr id="view_f_57">
+                                                                            <td class="label">
+                                                                                <label for="view_function__getItemSalesAll">
+                                                                                    All
+                                                                                </label>
+                                                                            </td>
+                                                                            <td class="form_field_holder ">
                                                                      <span id="view_function__getItemSalesAll" style="width: auto; display: inline;" class="view_field_relation">
                                                                      0</span>
-                                                                        </td>
-                                                                    </tr>
-                                                                    </tbody>
-                                                                </table>
-                                                            </td>
-                                                        </tr>
-                                                        </tbody>
-                                                    </table>
-                                                </td>
-                                            </tr>
-                                            </tbody>
-                                        </table>
-                                    </td>
-                                </tr>
-                                </tbody>
-                            </table>
+                                                                            </td>
+                                                                        </tr>
+                                                                        </tbody>
+                                                                    </table>
+                                                                </td>
+                                                            </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                                </tbody>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </form>
                         </div>
                     </div>
                 </article>
 
+                <?php if ($item->is_tracked_as_inventory == 1) : ?>
                 <article id="tabs-menu-inventory-link" class="view_tab_inventory tab tab-pane">
                     <div class="content">
                         <div class="view-columns">
@@ -827,6 +874,7 @@
                         </div>
                     </div>
                 </article>
+                <?php endif; ?>
 
                 <article id="tabs-menu-sales-link" class="view_tab_sales tab tab-pane">
                     <div class="content">
@@ -954,7 +1002,7 @@
                     </div>
                 </article>
 
-                <article id="tabs-menu-layaways-link" class="view_tab_layaways tab tab-pane">
+               <!-- <article id="tabs-menu-layaways-link" class="view_tab_layaways tab tab-pane">
                     <div class="content">
                         <i class="icon-refresh icon-spin"></i> Loading...
                     </div>
@@ -964,7 +1012,7 @@
                         <i class="icon-refresh icon-spin"></i> Loading...
                     </div>
                 </article>
-
+-->
                 <article id="tabs-menu-customers-link" class="view_tab_customers tab tab-pane">
                     <div class="content">
                         <div class="view-columns">
@@ -1405,14 +1453,17 @@
     .dropdown-wrapper {display: block;padding-block-end: 0;padding-block-start: 0;padding: 0 !important;}
     /*.select2-container--default .select2-selection--multiple .select2-selection__rendered li {margin: 0 !important;}*/
 
-    .select2-container--default .select2-selection--multiple .select2-selection__choice {margin: 0 10px 0 -5px !important;
+    .select2-container--default .select2-selection--multiple .select2-selection__choice {margin: 2px 10px 0 -5px !important;
         background-color: #e9eaeb !important;border-color: #e4e4e4 !important;}
 
     .dataTables_wrapper .row {padding: 0}
 </style>
 <script>
     $(document).ready(function () {
-        $('#select2-tags').select2();
+        $('#select2-tags').select2({
+            tags: true,
+            tokenSeparators: [',', ' ']
+        });
         $('#select2-departments').select2();
     });
 </script>

@@ -63,4 +63,13 @@ class Purchase_orders_itemsModel extends AbstractModel
                 $options";
         return parent::getSQL($sql);
     }
+
+    public static function getCompletedItemsTotal($order_id)
+    {
+        return parent::getColumns(
+            ['SUM(purchase_orders_items.total) AS total'],
+            "purchase_orders_items.order_id = '$order_id'&& purchase_orders_items.status = 'completed'",
+            true
+        );
+    }
 }

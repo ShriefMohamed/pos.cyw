@@ -35,12 +35,12 @@
             <div class="top-bar-item top-bar-item-full">
                 <!-- .top-bar-search -->
                 <div class="top-bar-search">
-                    <form method="post">
+                    <form method="post" action="<?= HOST_NAME ?>ajax/search">
                         <div class="input-group input-group-search">
                             <div class="input-group-prepend">
                                 <span class="input-group-text"><span class="oi oi-magnifying-glass"></span></span>
                             </div>
-                            <input type="text" class="form-control" aria-label="Search" placeholder="Search">
+                            <input type="text" class="form-control" aria-label="Search" placeholder="Search" name="key">
                         </div>
                     </form>
                 </div>

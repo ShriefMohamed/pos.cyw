@@ -10,7 +10,7 @@
     .dropdown-wrapper {display: block;padding-block-end: 0;padding-block-start: 0;padding: 0 !important;}
     /*.select2-container--default .select2-selection--multiple .select2-selection__rendered li {margin: 0 !important;}*/
 
-    .select2-container--default .select2-selection--multiple .select2-selection__choice {margin: 0 10px 0 -5px !important;
+    .select2-container--default .select2-selection--multiple .select2-selection__choice {margin: 2px 10px 0 -5px !important;
         background-color: #e9eaeb !important;border-color: #e4e4e4 !important;}
 </style>
 
@@ -54,19 +54,30 @@
                                     <tr>
                                         <td colspan="3">
                                             <div class="view_group">
-                                                <input type="text" autocomplete="off" size="40" maxlength="255" id="view_item" name="item" class="view_view string data_control" placeholder="Item" tabindex="1">
-                                                <input type="text" autocomplete="off" size="40" maxlength="255" id="view_description" name="description" class="view_view string data_control" placeholder="Description" tabindex="2">
+                                                <div class="row" style="padding: 0">
+                                                    <div class="col-md-7">
+                                                        <input type="text" autocomplete="off" size="40" maxlength="255" id="view_item" name="item" class="view_view string data_control" placeholder="Item" tabindex="1">
+                                                        <input type="text" autocomplete="off" size="40" maxlength="255" id="view_description" name="description" class="view_view string data_control" placeholder="Description" tabindex="2">
+                                                    </div>
+                                                    <div class="col-md-5">
+                                                        <label class="field_label flat-field-input" for="view_function__IsTrackedAsInventory" data-toggle="tooltip" data-placement="top" title="This treats your item as a tracked inventory asset. System will record the quantity on hand and prevent you selling below a quantity of zero.">
+                                                            <input type="checkbox" name="is_tracked_as_inventory" id="view_function__IsTrackedAsInventory" class="view_view boolean data_control" tabindex="2" checked>
+                                                            Tracked As Inventory
+                                                        </label>
 
-                                                <label class="field_label flat-field-input" for="view_function__item_type">Type</label>
-                                                <select name="item_type" id="view_function__item_type" class="view_view data_control" tabindex="3">
-                                                    <option value="single" selected="selected">Single</option>
-                                                    <option value="box">Box</option>
-                                                    <option value="assembly">Assembly</option>
-                                                    <option value="non_inventory">Non-Inventory</option>
-                                                </select>
+                                                        <label class="field_label flat-field-input" for="view_function__item_type">Type</label>
+                                                        <select name="item_type" id="view_function__item_type" class="view_view data_control" tabindex="3">
+                                                            <option value="single" selected="selected">Single</option>
+                                                            <option value="box">Box</option>
+                                                            <option value="assembly">Assembly</option>
+                                                        </select>
 
-                                                <label class="field_label flat-field-input" for="view_function__serialized">Serialized</label>
-                                                <input type="checkbox" name="serialized" id="view_function__serialized" class="view_view boolean data_control" tabindex="4">
+                                                        <label class="field_label flat-field-input" for="view_function__serialized">
+                                                            <input type="checkbox" name="serialized" id="view_function__serialized" class="view_view boolean data_control" tabindex="4">
+                                                            Serialized
+                                                        </label>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </td>
                                     </tr>
@@ -164,10 +175,40 @@
                                                                         </tr>
                                                                         <tr id="view_f_31">
                                                                             <td class="label">
-                                                                                <label for="view_account_id">Xero Account</label>
+                                                                                <label for="view_account_id">Xero Inventory Asset Account</label>
                                                                             </td>
                                                                             <td class="form_field_holder form-group">
-                                                                                <select name="xero_account" id="view_account_id" class="view_view data_control form-control form-round" tabindex="9" style="width: 80%">
+                                                                                <select name="xero_ia_account" id="view_account_id" class="view_view data_control form-control form-round" tabindex="9" style="width: 80%">
+                                                                                    <option value="0">None</option>
+                                                                                    <?php if (isset($xero_accounts) && $xero_accounts !== false) : ?>
+                                                                                        <?php foreach ($xero_accounts as $xero_account) : ?>
+                                                                                            <option value="<?= $xero_account->id.'|||'.$xero_account->Code ?>"><?= $xero_account->Name.'  ('.$xero_account->Code.')' ?></option>
+                                                                                        <?php endforeach; ?>
+                                                                                    <?php endif; ?>
+                                                                                </select>
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr id="view_f_31">
+                                                                            <td class="label">
+                                                                                <label for="view_account_id">Xero Purchase Account</label>
+                                                                            </td>
+                                                                            <td class="form_field_holder form-group">
+                                                                                <select name="xero_p_account" id="view_account_id" class="view_view data_control form-control form-round" tabindex="9" style="width: 80%">
+                                                                                    <option value="0">None</option>
+                                                                                    <?php if (isset($xero_accounts) && $xero_accounts !== false) : ?>
+                                                                                        <?php foreach ($xero_accounts as $xero_account) : ?>
+                                                                                            <option value="<?= $xero_account->id.'|||'.$xero_account->Code ?>"><?= $xero_account->Name.'  ('.$xero_account->Code.')' ?></option>
+                                                                                        <?php endforeach; ?>
+                                                                                    <?php endif; ?>
+                                                                                </select>
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr id="view_f_31">
+                                                                            <td class="label">
+                                                                                <label for="view_account_id">Xero Sales Account</label>
+                                                                            </td>
+                                                                            <td class="form_field_holder form-group">
+                                                                                <select name="xero_s_account" id="view_account_id" class="view_view data_control form-control form-round" tabindex="9" style="width: 80%">
                                                                                     <option value="0">None</option>
                                                                                     <?php if (isset($xero_accounts) && $xero_accounts !== false) : ?>
                                                                                         <?php foreach ($xero_accounts as $xero_account) : ?>

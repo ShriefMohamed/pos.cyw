@@ -25,6 +25,10 @@
                         <p>All Error Logs while doing a database operation.</p>
                     </li>
                     <li>
+                        <a href="<?= HOST_NAME ?>admin/log/xero"><button><i class="fa fa-reply"></i><span>Xero Logs</span></button></a>
+                        <p>All Error Logs while Xero sync operation.</p>
+                    </li>
+                    <li>
                         <a href="<?= HOST_NAME ?>admin/log/emails"><button><i class="fa fa-reply"></i><span>Emails Logs</span></button></a>
                         <p>All Error Logs recorded while sending emails.</p>
                     </li>

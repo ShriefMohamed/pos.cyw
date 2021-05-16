@@ -10,10 +10,10 @@ class SalesModel extends AbstractModel
 {
     public $id;
     public $uid;
-    public $customer_id; //
-    public $pricing_level; //
-    public $printed_note;//
-    public $internal_note;//
+    public $customer_id;
+    public $pricing_level;
+    public $printed_note;
+    public $internal_note;
 
     public $subtotal;
     public $discount;
@@ -49,15 +49,9 @@ class SalesModel extends AbstractModel
         'updated' => self::DATA_TYPE_STR
     );
 
-    public static function getNextID($options = '')
-    {
-        $sql = "SELECT MAX(auto_increment) AS next_id FROM INFORMATION_SCHEMA.TABLES WHERE table_name = 'sales' LIMIT 1";
-        return parent::getSQL($sql, '', true);
-    }
-
     public static function getSale($options = '', $shift = false) {
         $sql = "SELECT sales.*, 
-                    CONCAT(users_customer_table.firstName,' ', users_customer_table.lastName) AS customer_name,
+                    users_customer_table.id AS user_customer_id, CONCAT(users_customer_table.firstName,' ', users_customer_table.lastName) AS customer_name,
                     users_customer_table.phone AS customer_phone, users_customer_table.phone2 AS customer_mobile,
                     users_customer_table.email AS customer_email,
                     
@@ -68,16 +62,33 @@ class SalesModel extends AbstractModel
                      WHERE sales_payments.sale_id = sales.id
                     ) AS total_paid,
                     
-                    (SELECT SUM(items_pricing.buy_price)
+                    (SELECT SUM(items_inventory.buy_price)
                      FROM sales_items
-                     LEFT JOIN items_pricing ON sales_items.pricing_id = items_pricing.id
+                     LEFT JOIN items_inventory ON sales_items.inventory_id = items_inventory.id
                      WHERE sales_items.sale_id = sales.id &&
                         sales_items.total > 0
                     ) AS cost
                     
                 FROM sales 
-                LEFT JOIN users AS users_customer_table ON sales.customer_id = users_customer_table.id
+                LEFT JOIN customers ON sales.customer_id = customers.id
+                LEFT JOIN users AS users_customer_table ON customers.user_id = users_customer_table.id
                 LEFT JOIN users AS users_admin_table ON sales.created_by = users_admin_table.id
+                $options";
+        return parent::getSQL($sql, false, $shift);
+    }
+
+
+    public static function getSale__salePayment($options = '', $shift = false) {
+        $sql = "SELECT sales.id, sales.customer_id, sales.subtotal, sales.discount, sales.total, sales.tax,
+                    CONCAT(users.firstName,' ', users.lastName) AS customer_name,
+    
+                    (SELECT SUM(sales_payments.amount) 
+                     FROM sales_payments
+                     WHERE sales_payments.sale_id = sales.id
+                    ) AS total_paid
+                FROM sales 
+                LEFT JOIN customers ON sales.customer_id = customers.id
+                LEFT JOIN users ON customers.user_id = users.id
                 $options";
         return parent::getSQL($sql, false, $shift);
     }
@@ -89,8 +100,9 @@ class SalesModel extends AbstractModel
                      FROM sales_payments 
                      WHERE sales_payments.sale_id = sales.id
                      ) AS total_paid
-                FROM sales 
-                LEFT JOIN users ON sales.customer_id = users.id
+                FROM sales
+                LEFT JOIN customers ON customers.id = sales.customer_id
+                LEFT JOIN users ON users.id = customers.user_id
                 $options";
         return parent::getSQL($sql, false, $shift);
     }
@@ -101,12 +113,13 @@ class SalesModel extends AbstractModel
                     CONCAT(users.firstName,' ', users.lastName) AS customer_name,
                     sales_items.item_id, sales_items.original_price, sales_items.discount AS item_discount, 
                     sales_items.quantity, sales_items.price, sales_items.total AS item_total,
-                    items_pricing.buy_price, items_pricing.rrp_percentage, items_pricing.rrp_price,
+                    items_inventory.buy_price, items_inventory.rrp_price,
                     tax_classes.class, tax_classes.rate
                 FROM sales 
-                LEFT JOIN users ON sales.customer_id = users.id
+                LEFT JOIN customers ON customers.id = sales.customer_id
+                LEFT JOIN users ON users.id = customers.user_id
                 LEFT JOIN sales_items ON sales.id = sales_items.sale_id
-                LEFT JOIN items_pricing ON sales_items.pricing_id = items_pricing.id
+                LEFT JOIN items_inventory ON sales_items.inventory_id = items_inventory.id
                 LEFT JOIN tax_classes ON sales_items.tax_id = tax_classes.id
                 WHERE sales_items.item_id = '$item_id'
                 GROUP BY sales.id";
@@ -118,11 +131,12 @@ class SalesModel extends AbstractModel
         $sql = "SELECT sales_items.item_id, sales_items.original_price, sales_items.discount AS item_discount, 
                     sales_items.quantity, sales_items.price, sales_items.total AS item_total,
                     sales.customer_id,
-                    items_pricing.buy_price, items_pricing.rrp_percentage, items_pricing.rrp_price,
+                    items_inventory.buy_price, items_inventory.rrp_price,
                     tax_classes.class, tax_classes.rate
                 FROM sales_items 
+               
                 LEFT JOIN sales ON sales_items.sale_id = sales.id
-                LEFT JOIN items_pricing ON sales_items.pricing_id = items_pricing.id
+                LEFT JOIN items_inventory ON sales_items.inventory_id = items_inventory.id
                 LEFT JOIN tax_classes ON sales_items.tax_id = tax_classes.id
                 WHERE sales.customer_id = '$customer_id'";
         return parent::getSQL($sql);
@@ -141,9 +155,20 @@ class SalesModel extends AbstractModel
                      WHERE sales_payments.sale_id = sales.id
                     ) AS total_paid
                     
-                FROM sales 
-                LEFT JOIN users ON sales.customer_id = users.id
+                FROM sales
+                LEFT JOIN customers ON customers.id = sales.customer_id
+                LEFT JOIN users ON users.id = customers.user_id
                 $options";
         return parent::getSQL($sql);
     }
+
+    public static function getSaleInvoiceID($sale_id)
+    {
+        $sql = "SELECT invoices.id AS invoice_id
+                FROM invoices
+                LEFT JOIN invoices_orders ON invoices_orders.invoice_id = invoices.id
+                WHERE invoices_orders.order_id = '$sale_id'";
+        return parent::getSQL($sql, '', true);
+    }
+
 }

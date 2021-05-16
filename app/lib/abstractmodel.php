@@ -11,6 +11,10 @@ class AbstractModel
 	public static $db;
 	private $logger;
 
+    protected $_sql;
+    protected $_options;
+
+
 	const DATA_TYPE_INT = \PDO::PARAM_INT;
 	const DATA_TYPE_STR = \PDO::PARAM_STR;
 	const DATA_TYPE_FLOAT = 4;
@@ -162,12 +166,23 @@ class AbstractModel
         }
 	}
 
+	public static function NextID($AS = 'MAX(auto_increment)')
+    {
+        $sql = "SELECT $AS FROM INFORMATION_SCHEMA.TABLES WHERE table_name = '".static::$tableName."' LIMIT 1";
+        $stmt = self::$db->prepare($sql);
+        if ($stmt->execute()) {
+            $next_id = $stmt->fetchColumn();
+            return $next_id !== false ? $next_id : 0;
+        }
+    }
+
 
     ##### Execute SQLs & Get Data functions! ##########
 	public static function getAll($options = '', $shift = false)
     {
         $sql = "SELECT * FROM " . static::$tableName . ' ' . $options;
-		$stmt = self::$db->prepare($sql);
+
+        $stmt = self::$db->prepare($sql);
 		$stmt->execute();
 		$results = $stmt->fetchAll(\PDO::FETCH_CLASS | \PDO::FETCH_PROPS_LATE, get_called_class());
 
@@ -178,7 +193,7 @@ class AbstractModel
         }
 	}
 
-	public static function getOne($id, $options = '')
+	public static function getOne(int $id, $options = '')
     {
 	    $where = $options ?: static::$pk . " = '".$id."'";
 		$sql = "SELECT * FROM " . static::$tableName . " WHERE ".$where." LIMIT 1";
@@ -188,7 +203,7 @@ class AbstractModel
 		return is_object($result) ? $result : false;
 	}
 
-	public static function getColumns($cols = ['*'], $where = '1', $shift = false)
+	public static function getColumns(array $cols = ['*'], $where = '1', $shift = false)
     {
         $cols_string = is_array($cols) ? implode(', ', $cols) : '*';
 
@@ -224,7 +239,7 @@ class AbstractModel
         if ($stmt->execute()) {
             if ($shift === true) {
                 $result = $stmt->fetchObject(get_called_class());
-                return (is_object($result) && !empty($result)) ? $result : false;
+                return (is_object($result)) ? $result : false;
             } else {
                 switch ($shift) {
                     case 'column':
@@ -242,6 +257,89 @@ class AbstractModel
         } else {
             return false;
         }
+    }
+
+
+
+
+
+
+    public function fetchAll($options = '', $shift = false)
+    {
+        $this->_sql = isset($this->_sql) && $this->_sql
+            ? $this->_sql .' '. $options
+            : "SELECT * FROM " . static::$tableName .' '. $options;
+        return $this->exec($shift);
+    }
+
+    public function fetchOne($id, $options = '')
+    {
+        $where = $options ?: " WHERE " . static::$pk . " = '$id'";
+        $this->_sql = isset($this->_sql) && $this->_sql
+            ? $this->_sql .' '. $where . " LIMIT 1"
+            : "SELECT * FROM " . static::$tableName . $where . " LIMIT 1";
+        return $this->exec('object');
+    }
+
+
+    public function fetch($options = '')
+    {
+        $this->_sql = "SELECT * FROM " . static::$tableName .' '. $options;
+        $this->_options = $options;
+        return $this;
+    }
+
+    public function paginate()
+    {
+        $options = $this->options ?? '';
+
+        $_page = Request::Check('page', 'get')
+            ? Request::Get('page')
+            : 1;
+        $_per_page = Request::Check('limit', 'get')
+            ? Request::Get('limit')
+            : 10;
+        $_total = self::Count($options);
+
+
+        $this->_sql = $this->_sql . " LIMIT " . ( ( $_page - 1 ) * $_per_page ) . ", " . $_per_page;
+        $results = $this->exec();
+
+
+        $result = new \stdClass();
+        $result->pagination = (new Paginator($_page, $_per_page, $_total))->paginate();
+        $result->data = $results;
+
+        return $result;
+    }
+
+
+    private function exec($type = false)
+    {
+        if ($this->_sql) {
+            $stmt = self::$db->prepare($this->_sql);
+            if ($stmt->execute()) {
+                switch ($type) {
+                    case 'object':
+                        $result = $stmt->fetchObject(get_called_class());
+                        return (is_object($result)) ? $result : false;
+                    case 'column':
+                        $results = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+                        break;
+                    case 'assoc' :
+                        $results = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+                        break;
+                    default:
+                        $results = $stmt->fetchAll(\PDO::FETCH_CLASS | \PDO::FETCH_PROPS_LATE, get_called_class());
+                        break;
+                }
+                return (is_array($results) && !empty($results)) ? $results : false;
+
+            } else {
+                return false;
+            }
+        }
+        return false;
     }
 }
 

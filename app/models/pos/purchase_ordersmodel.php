@@ -95,8 +95,7 @@ class Purchase_ordersModel extends AbstractModel
                     ) recieved_items ON recieved_items.purchase_orders_items_order_id = purchase_orders.id
                     
                     LEFT JOIN users ON purchase_orders.created_by = users.id
-                    WHERE purchase_orders.id = '$order_id'
-                    ";
+                    WHERE purchase_orders.id = '$order_id'";
         return parent::getSQL($sql, '', true);
     }
 

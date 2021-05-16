@@ -34,8 +34,8 @@ class Sales_shipmentsModel extends AbstractModel
                     customers.address2, customers.city, customers.suburb, customers.zip,
                     sales.sale_status
                 FROM sales_shipments
-                LEFT JOIN users ON users.id = sales_shipments.customer_id
-                LEFT JOIN customers ON customers.user_id = sales_shipments.customer_id
+                LEFT JOIN customers ON customers.id = sales_shipments.customer_id
+                LEFT JOIN users ON users.id = customers.user_id
                 LEFT JOIN sales ON sales.id = sales_shipments.sale_id
                 $options";
         return parent::getSQL($sql, '', $shift);

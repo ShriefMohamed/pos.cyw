@@ -311,8 +311,10 @@ class QuotesController extends AbstractController
 
 
             $order = array('Cases & Accessories', 'Motherboards', 'CPU', 'Fan & Cooling Products', 'Memory', 'Hard Disk Drives - SSD', 'Hard Disk Drives - SATA', 'Video/Graphics Cards', 'Power Supplies', 'DVD & Bluray Drives', 'Network - Consumer', 'Software');
+            $alternative_categories = ['CPU', 'Memory', 'Hard Disk Drives - SSD', 'Hard Disk Drives - SATA', 'Monitors & Projectors'];
             $categories = Leader_itemsModel::getCategories() ? array_values(Leader_itemsModel::getCategories()) : false;
             $categories = $categories ? Helper::sortArrayByArray($categories, $order) : false;
+            $categories = $categories ? Helper::mergeAlternativeCategories($categories, $alternative_categories) : false;
 
             $quote = QuotesModel::getOne($id);
             $quote_customer = CustomersModel::getCustomersForQuotes(" && customers.id = '$quote->customer_id'", true);
@@ -563,9 +565,14 @@ class QuotesController extends AbstractController
             }
         }
 
-        $order = array('Cases & Accessories', 'Motherboards', 'CPU', 'Fan & Cooling Products', 'Memory', 'Hard Disk Drives - SSD', 'Hard Disk Drives - SATA', 'Video/Graphics Cards', 'Power Supplies', 'DVD & Bluray Drives', 'Network - Consumer', 'Software');
+        $order = array('Cases & Accessories', 'Motherboards', 'CPU', 'Fan & Cooling Products', 'Memory', 'Hard Disk Drives - SSD', 'Hard Disk Drives - SATA', 'Video/Graphics Cards', 'Power Supplies', 'DVD & Bluray Drives', 'Network - Consumer', 'Monitors & Projectors', 'Software');
+        $alternative_categories = ['CPU', 'Memory', 'Hard Disk Drives - SSD', 'Hard Disk Drives - SATA', 'Monitors & Projectors'];
+
         $categories = Leader_itemsModel::getCategories() ? array_values(Leader_itemsModel::getCategories()) : false;
+
         $categories = $categories ? Helper::sortArrayByArray($categories, $order) : false;
+
+        $categories = $categories ? Helper::mergeAlternativeCategories($categories, $alternative_categories) : false;
 
         $this->RenderQuotes([
             'categories' => $categories,
@@ -598,7 +605,7 @@ class QuotesController extends AbstractController
                 $variables['InvoiceDate'] = date('d M Y');
                 $variables['ExpiryDate'] = date('d M Y', strtotime('+7 days'));
                 $variables['Reference'] = Request::Post('l_name');
-                $variables['InvoiceNumber'] = 'Q-'.QuotesModel::getNextID()->next_reference;
+                $variables['InvoiceNumber'] = 'Q-'.QuotesModel::NextID("LPAD(MAX(auto_increment),5,'0')");
                 $variables['InvoiceCurrency'] = 'AUD';
 
                 $variables['Description'] = '';
@@ -607,12 +614,6 @@ class QuotesController extends AbstractController
                 $variables['DiscountPercentage'] = '';
                 $variables['LineAmount'] = '';
 
-                $items_merge_count = 0;
-                foreach ($_POST['items'] as $count_item) {
-                    if (isset($_POST['item_merge_component'][$count_item['component']])) {
-                        $items_merge_count++;
-                    }
-                }
 
                 $total = 0;
                 $counter = 1;

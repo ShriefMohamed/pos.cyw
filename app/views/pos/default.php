@@ -13,6 +13,10 @@
                         <p>View & manage all sales (paid, unpaid, quotes)</p>
                     </li>
                     <li>
+                        <a href="<?= HOST_NAME ?>pos/invoices"><button><i class="fa fa-newspaper"></i><span>Invoices</span></button></a>
+                        <p>View & manage all invoices (paid, unpaid)</p>
+                    </li>
+                    <li>
                         <a href="<?= HOST_NAME ?>pos/sale_add"><button><i class="fa fa-plus"></i><span>New Sale</span></button></a>
                         <p>Leave the current transaction open and start a new sale.</p>
                     </li>

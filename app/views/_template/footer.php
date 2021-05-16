@@ -38,6 +38,7 @@
 <script src="<?= VENDOR_DIR ?>flatpickr/flatpickr.min.js"></script>
 <script src="<?= VENDOR_DIR ?>particles.js/particles.min.js"></script>
 <script src="<?= VENDOR_DIR ?>select2/js/select2.min.js"></script>
+<script src="<?= VENDOR_DIR ?>jquery-query-object/jquery.query-object.js"></script>
 
 <!-- BEGIN THEME JS -->
 <script src="<?= JS_DIR ?>main.min.js"></script>
@@ -68,13 +69,7 @@
                 $('.' + className).dataTable().fnDestroy();
             }
 
-            var table = $('.' + className).DataTable({
-                options,
-                dom: 'Bfrtip',
-                buttons: [
-                    'copy', 'csv', 'excel', 'print', 'colvis'
-                ]
-            });
+            var table = $('.' + className).DataTable(options);
 
             $('.' + className).each(function() {
                 var datatable = $(this);
@@ -85,6 +80,21 @@
                 // LENGTH - Inline-Form control
                 var length_sel = datatable.closest('.dataTables_wrapper').find('div[id$=_length] select');
                 length_sel.addClass('form-control input-sm');
+
+                if (className == 'default-datatable') {
+                    var selected = $.query.GET('limit') ? $.query.GET('limit') : 10;
+                    var select = '<div class="pagination-per_page_control">\n'+
+                        '   <select class="form-control">\n'+
+                        '       <option '+(selected == '10' ? 'selected' : '')+' value="10">10</option>\n'+
+                        '       <option '+(selected == '20' ? 'selected' : '')+' value="20">20</option>\n'+
+                        '       <option '+(selected == '30' ? 'selected' : '')+' value="30">30</option>\n'+
+                        '       <option '+(selected == '50' ? 'selected' : '')+' value="50">50</option>\n'+
+                        '       <option '+(selected == '100' ? 'selected' : '')+' value="100">100</option>\n'+
+                        '   </select>\n'+
+                        ' </div>';
+
+                    datatable.closest('.dataTables_wrapper').prepend(select);
+                }
             });
 
             return table;
@@ -94,6 +104,18 @@
     $(document).ready(function() {
         // $.fn.dataTable.ext.errMode = 'none';
         InitDatatable();
+        InitDatatable('default-datatable', {
+            paging: false,
+            info: false,
+            dom: 'Bfrtip',
+            buttons: [
+                'copy', 'csv', 'excel', 'print', 'colvis'
+            ]
+        });
+
+        $(document).on('change', '.pagination-per_page_control select', function () {
+            window.location.search = $.query.set('limit', $(this).val());
+        });
 
         $(document).on('click', ".toggle-password", function() {
             $(this).toggleClass("fa-eye fa-eye-slash");

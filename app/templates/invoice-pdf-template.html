@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta name="x-apple-disable-message-reformatting">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta content="telephone=no" name="format-detection">
+    <title>Compute Your World</title>
+
+    <style>
+        #tat_input_container {
+            display: flex;
+            margin-bottom: 10px;
+        }
+        #tat_input_container label {
+            line-height: 26px;
+        }
+        #tat_input {
+            margin-left: 5px;
+            flex-grow: 2;
+            font-size: 14px;
+            line-height: 20px;
+            border-radius: 2px;
+            border: 1px #ccc solid;
+            padding-left: 5px;
+        }
+        #tat_submit_container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        #tat_submit_container select {
+            margin-left: 5px;
+        }
+        #tat_submit {
+            width: 45px;
+            margin-left: 5px;
+        }
+        #tat_to_lang {
+            width: 150px;
+        }
+        #swap_languages {
+            margin-left: 5px;
+            margin-right: 5px;
+            width: 24px;
+            height: 24px;
+            background-repeat: no-repeat;
+            background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAEKElEQVR4nL1Vb0xbVRQ/97Xre23pn9FSNmBQGEqGMJQPIyU6MkMczf6gbAyNk5lo9gkTdTPGLPswzRITjcYPftREiYQ/g5EVZZEwNt3ELBmiI/wLqB1rFdaWDaSjfe+e44cHpUAL0URPcnPuu/e887vn3PM7F+A/Fs1mBi+fbNBXPHNgv6ShCa/X+48BhI02T7522lbmrrtsTct8RRCETQ+TSLTJNhreOuvcXXG4y2C1F874vL25BcWP5hWWKgQEAABKNBJZmAvNzIaCi1d6vqVkfliixdfPnH+8eO9BzxaDKQuRgCMRR2KcYhoQgaKRh/PBO+O90yM/fhTy/faD51InrvW1LuzT5z6sLKo4/LVGZ3AoSMARQEEChYgpSKAgMa5qQKaRREvaLmteST0jlHIc5usjw8M8KUBN3Yu2soP1fYLOkLrkDJadxb5pWQMgESASIDHBsC3vSR4Ja3fYUq6OjY1SQoBUq3kxHPT/lJpdUAVaMYUjMQWJKbR8clA1qWniBAyJGKpgTHLklC3cHb469POANyHA1NQUDN66+atNxCuWjJ2VgmhUI+EICkfkiKQOIiRgSKDexxIAAtMQoikjRbg4Pj6OAEmq6KsvPhuok6P7H3n6+ZaUdGep/5fv+vyDfe8AQCy/Wslo3+567n3Rnl1CKgAhEOgceeU6UbQCQCApAABAS1PjZC2XD2S7qr9EpPCD+7MDPT09SrzNcYNFdpQfuUgEAhIBEQAJGpEBmDcFAABoa2mePopYK5pt+2RZXleCi0HftTueTx4jIi1jasUTESHiH8s2MR68cea9Ap1kLCHVCJAAwnOh6ZnfR79vb29f5fzZupcMzpLyd32D1862tTY/3OiQsQiMVvuhQlfVB5xWiPUgOO0LTE3sAQD/qr+4rE0v2vsm0xmdxwTh1dbmpvubAoT+nLotq45haZBoScsorjrRkbn7qTZgQjSWZ0JJQYKtO5+oYaIx7ZigeaG1qdGfCCCWopqjtcZ99W+P64yWDI5EnFTGokou4kgMCUite4L4eTjgG/Jfv1Db3Pj56FqAGA9Ghofl/DynvDV7l3ulJQAotBRRHKEwvvaJQCOZ0vQZ+dW5Nn3/0OCtuwkBAAC228yDW/TGfL0ts4gvMZivtIV49sJaMNLqTJGQb36bReqdnJxM3CrGRkd5ulFzWYkuSnr7jlICjSbOGSzPOREgrKwpclS+13/h47Bv7LzH41lVVQnbtdvt1phT7SXWnKLjkj1rj6DTpxKBQKS+BgRMEB25+UjElMW/Fu7daD0XCfk/7ejoCCe95ETicrmYyWQSRVHUQdzrJ6WYTVmHTnmj88HZwI2WU5G5QFNnZ2c0kY8NAZKJu/qI2Vl54nawv60hPDf7TVdXF09m+6/eWafTyWlm4tLcbOBmd3f3uhbyv8rfG8mfJ968lFgAAAAASUVORK5CYII=);
+            cursor: pointer;
+        }
+        #swap_languages.disabled {
+            background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAEIklEQVR4nL1VX0hbVxj/7k0w6TS3QVck+qC2/tfhiMyRUR8GlU4XNzJYsFBUluXBh/Uho0PBPWww6TbEpzGz+pKBC2OS2tkHRbQd3ZiIdkoVghptdO2MRmP+3Xtzb+759nBNFl0S8WH7weF+nO+7v985h/P7DsB/DMVZBTab7YLJZLouCMKG1+s9twCdLdnf31/Q09MzWVZWZqFp+szFpIMyU2JgYKC0s7Pzga6oqHZ9fX2msbGx0mAwxBN5juNi+/v7e36/n5+cnMRzqQ4NDb3q9/t3JEnCuCRhPB4noiiiIIgkJggYi8WQ53lycHgYnJmddfX29l41mUxZTyMJu91+LRKJBCSZGEVRREEUiSATE57nkeM4ZFmWRKNRjEQieHQUFO+OjAyYzWbVab4T59rd3V1gs9ke5ubm5iMAACJgckBKfHIAIF1TW3s1HAopc3JyHrndbkwrkJeXx29sbPyh1+vfuqBW5yEChYDUMVHql0LyT0wQAZFQlZVVry8sLDxaXFzwphXY3t6Gubm5zXA4PFtXV3eNYZh8RASJEJDiEiESQXlIeCxMISIQJICIFEVRCkmSNKIo3FtbWyMAGW6R3W5/wvP89Y9u3fqxprpG/2Bi4qHL5eoDAClRwzDMyxaL5U55RWUDIgEkiAQRqqqr31CpVFoA8GcUAABwOBweQRDetlgs30uEsIFA4Mn09HQ8tSY/v0C0Wq33CCItHx8BhUKhAgDmTAEAAKfT6ZMk6X2dTvemKIrkdP7Zs61f+vp66xBRSVEUAAAgIhJC/krUUIlgcHCwimGYBvlWyNjb2/MtLS09HhsbO0H+gcXyUktLy+c/37//qdPp5LItMrkDnU7X3tHR8fWxACIitbOz83xlZaUJAF6k/hTjeeU77e02RqMppWn6w9HR0aMzBTwez1OUAQmN4uLiotu3P3EZjcafaJoWjueBEKImBKG5ufk9jUZzSalU3nA4HC8yiQAAgNlszt3d3X0utwSByO0ghhzHI8txJMqyGIlESTgcwVAojMFgiBwdBfEwEMCFxcWnVqu1Oh1v0gerq6tiSUmJqG9sbEXZtgljATltNJKcpxAJXGQuXqqvf+VdmqZ/n5+f/zOtAACAWq1eYhim/HJZWT1mEiAJc8nuRSLHOSqVZmtrM6xUKmc8Hk/6VuF2uyVBECZZllWXV1ToFbRCkeJUOBZIkCdjnuPEkbvfDS0vL38xMTFx4lZRkAatra2KwsLChteamm5euXylSW5+CTMhUEDRVdVV5YQgFQoGo8P24c+2vd5vXC4Xe5orrUACBoOB0mg0KpVKlQMpr59Wq9Xc+fIrr8/nC9iHv/3Y5/P9MD4+LmTjOhfMZjPz+NffvF1dXe1GozHrU5p1B5nQ1tam1Gq1pQcHB5tTU1P/aiH/K/4G7RvFhRjTPe0AAAAASUVORK5CYII=);
+            cursor: auto;
+        }
+        main {
+            color: #333;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            font-weight: 300;
+            line-height: 19px;
+            letter-spacing: initial;
+            background: #fcf7d9;
+            text-align: left;
+            border-style: solid;
+            border-width: 1px;
+            border-color: #ccc;
+            box-shadow: rgba(0,0,0,0.2) 0px 2px 5px;
+            border-radius: 5px;
+            padding: 10px 12px 12px 12px;
+            position: fixed;
+            z-index: 2147483647;
+            top: 15px;
+            right: 15px;
+            -webkit-font-smoothing: antialiased;
+            font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
+        }
+        #disable_on_this_page_container {
+            margin-bottom: 8px;
+            color: blue;
+        }
+        #disable_on_this_page {
+            position: relative;
+            vertical-align: middle;
+            bottom: 1px;
+            margin-right: 5px;
+        }
+        #top_row_container {
+            display: flex;
+            justify-content: space-between;
+        }
+        #tat_close{
+            width: 12px;
+            height: 12px;
+            background: -webkit-linear-gradient(-45deg, transparent 0%, transparent 46%, darkgrey 46%, darkgrey 56%,transparent 56%, transparent 100%), -webkit-linear-gradient(45deg, transparent 0%, transparent 46%, darkgrey 46%,  darkgrey 56%,transparent 56%, transparent 100%);
+        }
+
+
+
+
+        html{font-size:100%;-webkit-text-size-adjust:100%;}
+        *,*::before,*::after{box-sizing:inherit;}
+        body{margin:0;padding:0;}
+        table{border-collapse:collapse;}
+        .xui-body{-moz-osx-font-smoothing:grayscale;-webkit-font-smoothing:antialiased;font-smoothing:antialiased;box-sizing:border-box;color:#000a1e;font-family:"Helvetica Neue", Helvetica, Arial, sans-serif;font-size:0.8125rem;line-height:1.5;background-color:#f2f3f4;min-height:100%;overflow-y:scroll;}
+        .xui-text-align-left{text-align:left;}
+        .xui-text-align-right{text-align:right;}
+        .xui-text-deemphasis{font-weight:400;}
+        .xui-textcolor-muted{color:rgba(0, 10, 30, 0.75);}
+        .xui-u-flex{display:flex;}
+        .xui-u-flex-justify-space-between{justify-content:space-between;}
+        .xui-u-flex-justify-end{justify-content:flex-end;}
+        .xui-margin-vertical{margin-top:15px;margin-bottom:15px;}
+        .xui-padding-right{padding-right:15px;}
+        .xui-row::after{clear:both;content:"";display:table;}
+        .xui-row-flex{display:flex;flex-flow:row wrap;}
+        .xui-column-6-of-12{float:left;width:50%;}
+
+
+        .xui-body{background-color:#fff;}
+        .ods-section{padding:4%;width:100%;margin:1% auto;}
+        .ods-section:last-child{margin-bottom:0;}
+        .ods-section-contents{margin:1% auto;max-width:940px;-webkit-align-items:center;align-items:center;}
+        .ods-logo-and-title{-webkit-align-items:center;align-items:center;margin-top:0;margin-bottom:0;padding-top:3%;padding-bottom:3%;}
+        .ods-title{-webkit-order:1;order:1;}
+        .ods-title{-webkit-align-self:center;-ms-grid-row-align:center;align-self:center;-webkit-flex-grow:1;flex-grow:1;text-align:left;}
+        .ods-logo{max-width:50%;-webkit-order:2;order:2;}
+        .ods-document-details{border-bottom:1px solid rgba(0,10,30,.35);border-top:1px solid rgba(0,10,30,.35);padding-bottom:1.5%;padding-top:1.5%;margin-top:0;}
+        .ods-document-info-table{width:100%;}
+        .ods-document-info-table__label{vertical-align:top;padding:5px 10px 5px 0;}
+        .ods-document-info-table__details{padding:5px 0;max-width:230px;word-wrap:break-word;}
+        .ods-organisation-address{padding-left:15px;}
+        .ods-date-due{color:#7e90a2;}
+        .ods-line-items{padding-bottom:20px;}
+        .ods-line-items table{width:100%;}
+        .ods-line-items td{padding-bottom:10px;padding-top:10px;}
+        .ods-line-items th{padding-bottom:4px;}
+        .ods-line-items td,.ods-line-items th{border-bottom:1px solid rgba(0,10,30,.35);padding-right:15px;max-width:230px;word-wrap:break-word;}
+        .ods-line-items td:last-child,.ods-line-items th:last-child{padding-right:0;}
+        .ods-line-items .ods-line-item--small-screen{padding-top:0;}
+        .ods-line-item--small-screen{color:#7e90a2;}
+        .ods-hide-when-large{display:none;}
+        .ods-totals{margin-left:auto;}
+        .ods-totals tr:last-child td{border-bottom:1px solid rgba(0,10,30,.35);}
+        .ods-totals__label{min-width:150px;padding:0 20px 15px 0;}
+        .ods-totals__value{min-width:80px;padding:0 0 15px;text-align:right;vertical-align:top;}
+        .ods-totals__label--amount-due{border-top:1px solid rgba(0,10,30,.35);font-size:14px;font-weight:700;padding:10px 20px 10px 0;}
+        .ods-totals__value--amount-due{border-top:1px solid rgba(0,10,30,.35);font-size:24px;font-weight:700;padding:10px 0;}
+        .ods-footnotes{border-top:1px solid rgba(0,10,30,.35);word-wrap:break-word;}
+        .ods-footnotes p:first-child{margin-top:0;}
+        .ods-footnotes p:last-child{margin-bottom:0;}
+        @media screen and (max-width:940px){
+            .ods-section{padding:0 4% 4%;margin:5% 0;}
+            .ods-organisation-address{padding-left:0;}
+        }
+        @media screen and (max-width:32.5rem){
+            .xui-column-12-of-12-small{float:left;width:100%;}
+            .ods-hide-when-small{display:none;}
+            .ods-hide-when-large{display:block;}
+            .ods-line-items td,.ods-line-items th{border-bottom:none;}
+            .ods-line-items .ods-line-item--small-screen-divider{border-top:1px solid rgba(0,10,30,.35);}
+            .ods-document-info-table__label{min-width:110px;width:110px;}
+            .ods-totals{border-top:1px solid rgba(0,10,30,.35);margin:0;}
+            .ods-totals table{width:100%;}
+            .ods-standard-totals{-webkit-flex-direction:column;flex-direction:column;}
+        }
+        .xui-body{background-color:#fff;overflow-y:auto;}
+    </style>
+
+</head>
+<body class="xui-body">
+<div class="frame-root">
+    <div class="frame-content">
+        <div class="standard-online-document">
+            <div>
+                <div class="ods-section ods-logo-and-title null">
+                    <div class="xui-row-flex ods-section-contents">
+                        <img class="ods-logo " src="{{IMAGEPATH}}logo.jpg">
+                        <h2 class="xui-page-title xui-margin-vertical ods-title">TAX INVOICE</h2>
+                    </div>
+                </div>
+                <div class="ods-section ods-document-details">
+                    <div class="ods-section-contents xui-row">
+                        <div class="xui-column-6-of-12 xui-column-12-of-12-small xui-padding-right">
+                            <table class="ods-document-info-table">
+                                <tbody>
+                                <tr>
+                                    <td class="ods-document-info-table__label"><strong>To</strong></td>
+                                    <td class="ods-document-info-table__details">
+                                        <span>{{CUSTOMER_NAME}}</span><br>
+                                        <span>{{ADDRESS}}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="ods-document-info-table__label" style="color: #0078c8"><strong>Invoice Number</strong></td>
+                                    <td class="ods-document-info-table__details">{{INVOICE_NUMBER}}</td>
+                                </tr>
+                                <tr>
+                                    <td class="ods-document-info-table__label"><strong style="color: #0078c8">Reference</strong></td>
+                                    <td class="ods-document-info-table__details">{{INVOICE_REFERENCE}}</td>
+                                </tr>
+                                <tr>
+                                    <td class="ods-document-info-table__label" style="color: #0078c8"><strong>Issued</strong></td>
+                                    <td class="ods-document-info-table__details">{{DATE}}</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="xui-column-6-of-12 xui-column-12-of-12-small ods-organisation-address">
+                            <table class="ods-document-info-table">
+                                <tbody>
+                                <tr>
+                                    <td class="ods-document-info-table__label"><strong>From</strong></td>
+                                    <td class="ods-document-info-table__details">
+                                        Compute Your World Pty Ltd<br>
+                                        Shop 2/2 Malone Street<br>MORPHETT VALE SA 5162<br>AUSTRALIA
+                                        <br><br>
+                                        <strong style="color: #0078c8">ACN</strong>: 613 878 729<br>
+                                        <strong style="color: #0078c8">ABN</strong>: 26 613 878 729
+                                        <br><br>
+                                        P: 08 8461 9552<br>
+                                        E: accounts@computeyourworld.com.au
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="ods-section">
+                    <div class="ods-section-contents xui-row">
+                        <div class="ods-line-items">
+                            <table>
+                                <thead>
+                                <tr>
+                                    <th class="xui-text-align-left">Description</th>
+                                    <th class="xui-text-align-right ods-hide-when-small">Quantity</th>
+                                    <th class="xui-text-align-right ods-hide-when-small">Unit Price</th>
+                                    <th class="xui-text-align-right ods-hide-when-small">Discount AUD</th>
+                                    <th class="xui-text-align-right ods-hide-when-small">GST</th>
+                                    <th class="xui-text-align-right">Amount AUD</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+
+                                {{INVOICE_LINES}}
+
+                                </tbody>
+                            </table>
+                        </div>
+                        <div>
+                            <div class="ods-standard-totals xui-u-flex xui-u-flex-justify-space-between">
+                                <div class="ods-totals xui-row-flex xui-u-flex-justify-end">
+                                    <table>
+                                        <tbody>
+                                        <tr>
+                                            <td class="ods-totals__label"><span>Subtotal<em> {{DISCOUNT}}</em></span></td>
+                                            <td class="ods-totals__value">{{SUBTOTAL}}</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="ods-totals__label">Total GST</td>
+                                            <td class="ods-totals__value">{{TAX}}</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="ods-totals__label ods-totals__label--amount-due">Amount Due</td>
+                                            <td class="ods-totals__value ods-totals__value--amount-due"><span class="xui-textcolor-muted xui-text-deemphasis">AUD </span>{{AMOUNT_DUE}}</td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="ods-section ods-footnotes">
+                    <div class="ods-section-contents xui-row">
+                        <p class="StandardFootnotes-terms">Account Name: Compute Your World Pty Ltd<br>Due to Cyber-Crime, please call for BSB &amp; Account Details - 08 8461 9552<br><br>Please State the Invoice Number in the description of payment</p>
+                        <p class="StandardFootnotes-registeredAddress">ABN: 26 613 878 729. Registered Office: Shop 2, 2 Malone St, MORPHETT VALE, SA, 5162, Australia</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

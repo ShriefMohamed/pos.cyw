@@ -17,6 +17,7 @@ use Framework\models\jobs\TechniciansModel;
 use Framework\models\licenses\Digital_licenses_assigned_licensesModel;
 use Framework\models\licenses\Digital_licenses_assignModel;
 use Framework\models\licenses\Digital_licensesModel;
+use Framework\models\Np_pdf_ordersModel;
 use Framework\models\pos\Purchase_orders_itemsModel;
 use Framework\models\pos\VendorsModel;
 use Framework\models\quotes\Leader_itemsModel;
@@ -1132,5 +1133,103 @@ class CronController extends AbstractController
         }
 
         return $rrp;
+    }
+
+
+
+    public function testAction()
+    {
+        $dir = CONTROLLERS_PATH.'Orders';
+
+        //list all files in a dir
+//        if ($handle = opendir($dir)) {
+//
+//            while (false !== ($entry = readdir($handle))) {
+//
+//                if ($entry != "." && $entry != "..") {
+//
+//                    echo "$entry\n";
+//                    echo "<br>";
+//                }
+//            }
+//
+//            closedir($handle);
+//        }
+
+
+
+        // read PDF and save to db
+//        $exported_file = $dir.'/merged-pdfs-converted/manual.xlsx';
+////         $exported_file = $dir.'/merged-pdfs-converted/Aberfoyle Hub Preschool 200720-converted.xlsx';
+//        $inputFileType = IOFactory::identify($exported_file);
+//        $reader = IOFactory::createReader($inputFileType);
+//        $reader->setReadDataOnly(true);
+//
+////        $reader->setLoadAllSheets();
+////        $sheets = $reader->listWorksheetNames($exported_file);
+//        $spreadsheet = $reader->load($exported_file);
+//        //        $sheetData = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
+//
+//
+//        $sheetCount = $spreadsheet->getSheetCount();
+//        for ($i = 0; $i < $sheetCount; $i++) {
+//            $sheet = $spreadsheet->getSheet($i);
+//            $sheetData = $sheet->toArray(null, true, true, true);
+//
+//            $data_table_started = false;
+//            foreach ($sheetData as $sheetData_array) {
+//                if ($data_table_started) {
+//                    if ($sheetData_array['A'] && $sheetData_array['B'] && $sheetData_array['C']) {
+//                        $existing = Np_pdf_ordersModel::getColumns(['id', 'quantity'], "code LIKE '%".$sheetData_array['A']."%'", true);
+//
+//                        $np_order = new Np_pdf_ordersModel();
+//                        $np_order->code = $sheetData_array['A'];
+//                        $np_order->details = $sheetData_array['B'];
+//
+//                        if ($existing) {
+//                            $np_order->id = $existing['id'];
+//                            $np_order->quantity = intval($existing['quantity']) + intval($sheetData_array['C']);
+//                        } else {
+//                            $np_order->quantity = intval($sheetData_array['C']);
+//                        }
+//
+//                        var_dump($sheetData_array['A']);
+//                        var_dump($sheetData_array['B']);
+//                        var_dump($sheetData_array['C']);
+//                        var_dump($np_order->Save());
+//                        echo "<br><br><br>";
+//                    }
+//                }
+//
+//                if (strtolower($sheetData_array['A']) == 'code' && strtolower($sheetData_array['B']) == 'details') {
+//                    $data_table_started = true;
+//                }
+//            }
+//
+//
+//        }
+
+
+        //export data to csv
+//        $FileName = 'orders';
+//        $header = array('Code', 'Details', 'Quantity');
+//        header('Content-Type: text/csv');
+//        header('Content-Disposition: attachment; filename=' . $FileName . '.csv');
+//        header('Pragma: no-cache');
+//        header("Expires: 0");
+//        $outstream = fopen("php://output", "w");
+//        fputcsv($outstream, $header);
+//
+//        $orders = Np_pdf_ordersModel::getAll();
+//        foreach ($orders as $order) {
+//            $row = array(
+//                $order->code,
+//                $order->details,
+//                $order->quantity
+//            );
+//            fputcsv($outstream, $row);
+//        }
+//
+//        exit();
     }
 }

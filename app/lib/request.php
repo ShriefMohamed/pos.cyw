@@ -10,14 +10,19 @@ class Request
     public static $strength = 'normal';
 
 
-    public static function Check($name, $type = 'post')
+    public static function Check($name, $type = 'post'): bool
     {
-        return $type == 'get' ?
-            ((isset($_GET[$name]) && !empty($_GET[$name])) ? true : false) :
-            ((isset($_POST[$name])) ? true : false);
+        return $type == 'get'
+            ? isset($_GET[$name]) && !empty($_GET[$name])
+            : isset($_POST[$name]);
     }
 
-    public static function Get($name = '', $urlDecode = false, $sanitize = false)
+    public static function Re_Check($name): bool
+    {
+        return isset($_POST[$name]) && !empty($_POST[$name]) && $_POST[$name];
+    }
+
+    public static function Get($name = '', $urlDecode = false, $sanitize = false): ?string
     {
         if (self::Check($name, 'get')) {
             if ($urlDecode === true && $sanitize === true) {
@@ -35,7 +40,7 @@ class Request
         return self::$data[$name];
     }
 
-    public static function Post($name = '', $urlDecode = false, $sanitize = false)
+    public static function Post($name = '', $urlDecode = false, $sanitize = false): ?string
     {
         if (self::Check($name, 'post')) {
             if ($urlDecode === true && $sanitize === true) {
@@ -53,12 +58,12 @@ class Request
         return self::$data[$name];
     }
 
-    private static function Clean($data, $isUrlEncoded = false)
+    private static function Clean($data, $isUrlEncoded = false): string
     {
         return ($isUrlEncoded) ? strip_tags(trim(urldecode($data))) : strip_tags(trim($data));
     }
 
-    private static function Sanitize($data)
+    private static function Sanitize($data): string
     {
         switch (static::$strength) {
             default:

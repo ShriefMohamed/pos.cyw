@@ -68,6 +68,10 @@
     <?php endif; ?>
 
 
+    <link rel="stylesheet" href="<?= CSS_DIR ?>override.css">
+
+
+
     <!-- END THEME STYLES -->
 
     <!-- BEGIN PLUGINS STYLES -->

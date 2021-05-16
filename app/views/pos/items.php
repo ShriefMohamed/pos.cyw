@@ -103,8 +103,8 @@
             <div id="work_listing">
                 <div id="listing_loc_matches">
                     <div class="container" style="max-width: 100%">
-
-                        <table cellpadding="0" cellspacing="0" border="0" class="g-datatable datatable table table-striped table-bordered">
+                        <?php if (isset($data) && $data !== false) : ?>
+                        <table cellpadding="0" cellspacing="0" border="0" class="default-datatable datatable table table-striped table-bordered">
                             <thead>
                             <tr>
                                 <th width="15%">Item UID</th>
@@ -121,8 +121,8 @@
                             </tr>
                             </thead>
                             <tbody>
-                            <?php if (isset($data) && $data !== false) : ?>
-                                <?php foreach ($data as $item) : ?>
+                            <?php if (isset($data->data) && $data->data !== false) : ?>
+                                <?php foreach ($data->data as $item) : ?>
                                     <tr class="gradeX">
                                         <td><a href="<?= HOST_NAME . 'pos/item/' . $item->id ?>">#<?= $item->uid ?></a></td>
                                         <td><a href="<?= HOST_NAME . 'pos/item/' . $item->id ?>"><?= $item->item ?></a></td>
@@ -134,7 +134,7 @@
                                         <td><?= $item->category_name ?></td>
                                         <td><?= $item->rate ? $item->class.' ('.$item->rate.'%)' : 'None' ?></td>
                                         <td style="width: 5%"><?= $item->available_stock ?></td>
-                                        <th>$<?= $item->items_avg_price ? number_format(substr($item->items_avg_price, 0, 5), 2) : 0 ?></th>
+                                        <td>$<?= $item->items_avg_price ? number_format(substr($item->items_avg_price, 0, 5), 2) : 0 ?></td>
 
                                         <td class="center">
                                             <a href="#" title="Archive" class="archive-btn" data-id="<?= $item->id ?>" data-function="item"><i class="fa fa-trash"></i></a>
@@ -145,6 +145,9 @@
                             <?php endif; ?>
                             </tbody>
                         </table>
+
+                        <?= $data->pagination ?>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>

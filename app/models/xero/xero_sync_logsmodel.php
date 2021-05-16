@@ -9,7 +9,7 @@ use Framework\lib\AbstractModel;
 class Xero_sync_logsModel extends AbstractModel
 {
     public $id;
-    public $type; // customers, accounts, invoices
+    public $type; // customers, accounts, invoices, items
     public $result; // success, fail
     public $created;
 

@@ -15,7 +15,7 @@
                             <li class="details nav-item"><a id="menuDetails" class="nav-link active" data-form="customer-details" href="#tabs-menu-details-link" data-toggle="tab">Details</a></li>
 
                             <li class="sales nav-item"><a id="menuSales" class="nav-link" href="#tabs-menu-sales-link" data-toggle="tab">Sales</a></li>
-                            <li class="layaways nav-item "><a id="menuLayaways" class="nav-link" href="#tabs-menu-layaways-link" data-toggle="tab">Layaways</a></li>
+                            <li class="invoices nav-item"><a id="menuSales" class="nav-link" href="#tabs-menu-invoices-link" data-toggle="tab">Invoices</a></li>
                             <li class="quotes nav-item"><a id="menuQuotes" class="nav-link" href="#tabs-menu-quotes-link" data-toggle="tab">Quotes</a></li>
                             <li class="licenses nav-item"><a id="menuLicenses" class="nav-link" href="#tabs-menu-licenses-link" data-toggle="tab">Licenses</a></li>
                             <li class="payments nav-item"><a id="menuPayments" class="nav-link" href="#tabs-menu-payments-link" data-toggle="tab">Payments</a></li>
@@ -424,9 +424,136 @@
                             </div>
                         </article>
 
-                        <article id="tabs-menu-layaways-link" class="view_tab_layaways tab tab-pane">
+                        <article id="tabs-menu-invoices-link" class="view_tab_invoices tab tab-pane">
                             <div class="content">
-                                <i class="icon-refresh icon-spin"></i> Loading...
+                                <div class="view-columns">
+                                    <table class="view-layout set_auto_focus">
+                                        <tbody>
+                                        <tr>
+                                            <td>
+                                                <table class="view-column ">
+                                                    <tbody>
+                                                    <tr id="view_f_9">
+                                                        <td class="view_listing" colspan="2">
+                                                            <h2 class="child-listing-title">Invoices</h2>
+                                                            <div class="is_pannel">
+                                                                <div class="listing">
+                                                                    <div>
+                                                                        <div>
+                                                                            <div class="container" style="max-width: 100%;padding-top: 10px">
+                                                                                <table cellpadding="0" cellspacing="0" border="0" class="g-datatable datatable table table-striped table-bordered">
+                                                                                    <thead>
+                                                                                    <tr>
+                                                                                        <th width="15%">#ID</th>
+                                                                                        <th>#REF</th>
+                                                                                        <th>DATE</th>
+                                                                                        <th>SUBTOTAL</th>
+                                                                                        <th>DISCOUNT</th>
+                                                                                        <th>TAX</th>
+                                                                                        <th>TOTAL</th>
+                                                                                        <th>PAID</th>
+                                                                                        <th>DUE</th>
+                                                                                        <th>STATUS</th>
+                                                                                        <th></th>
+                                                                                    </tr>
+                                                                                    </thead>
+                                                                                    <tbody>
+                                                                                    <?php if (isset($invoices) && $invoices !== false) : ?>
+                                                                                        <?php foreach ($invoices as $invoice) : ?>
+                                                                                            <tr style="" class="" id="reports_sales_listings_transaction_line_sales_view_r_<?= $invoice->id ?>">
+                                                                                                <td class="string ">
+                                                                                                    <a title="View Invoice" target="_blank" href="<?= HOST_NAME . 'pos/invoice/' . $invoice->id ?>"><span style="padding-right: 5px;"><i class="fa fa-search "></i></span><?= '#'. $invoice->id ?></a>
+                                                                                                </td>
+                                                                                                <td><a target="_blank" href="<?= HOST_NAME . 'pos/invoice/' . $invoice->id ?>">#<?= $invoice->reference ?></a></td>
+                                                                                                <td class="date ">
+                                                                                                    <time datetime="<?= $invoice->created ?>"><?= \Framework\lib\Helper::ConvertDateFormat($invoice->created) ?></time>
+                                                                                                </td>
+                                                                                                <td>$<?= number_format($invoice->subtotal, 2) ?></td>
+                                                                                                <td>$<?= number_format($invoice->discount, 2) ?></td>
+                                                                                                <td>$<?= number_format($invoice->tax, 2) ?></td>
+                                                                                                <td>$<?= number_format($invoice->total, 2) ?></td>
+                                                                                                <td>$<?= number_format($invoice->amount_paid, 2) ?></td>
+                                                                                                <td>$<?= number_format($invoice->amount_due, 2) ?></td>
+                                                                                                <td><?= strtoupper($invoice->status) ?></td>
+
+                                                                                                <td class="center">
+                                                                                                    <?php if ($invoice->status != 'voided') : ?>
+                                                                                                        <?php if ($invoice->status == 'unpaid' || $invoice->status == 'semi-paid') : ?>
+                                                                                                            <!--<a href="<?= HOST_NAME.'pos/sales_payments/'.$invoice->id ?>" style="margin-left: 15px;">Pay</a>-->
+                                                                                                        <?php endif; ?>
+
+                                                                                                        <a href="<?= HOST_NAME.'pos/invoice_void/'.$invoice->id ?>">Void</a>
+                                                                                                    <?php endif; ?>
+                                                                                                </td>
+                                                                                            </tr>
+                                                                                        <?php endforeach; ?>
+                                                                                    <?php endif; ?>
+                                                                                    </tbody>
+                                                                                </table>
+
+                                                                                <?php if (isset($sales_totals) && !empty($sales_totals)) : ?>
+                                                                                    <div class="info">
+                                                                                        <div class="form info_pannel">
+                                                                                            <table cellspacing="2">
+                                                                                                <tbody>
+                                                                                                <tr valign="top">
+
+                                                                                                    <td class="info_pannel_column">
+                                                                                                        <table>
+                                                                                                            <tbody>
+                                                                                                            <tr class="odd" valign="top">
+                                                                                                                <td class="label">Subtotal</td>
+                                                                                                                <td id="infoPannelTotalsSubtotalValue" class="info_field prettymoney">$<?= number_format($sales_totals->original_sub_total, 2) ?></td>
+                                                                                                            </tr>
+                                                                                                            <tr class="even" valign="top">
+                                                                                                                <td class="label">Discounts</td>
+                                                                                                                <td id="infoPannelTotalsDiscountsValue" class="info_field prettymoney">$<?= number_format($sales_totals->discounts, 2) ?></td>
+                                                                                                            </tr>
+                                                                                                            <tr class="odd" valign="top">
+                                                                                                                <td class="label">Subtotal w/ Discounts</td>
+                                                                                                                <td id="infoPannelTotalsSubtotalWithDiscountValue" class="info_field prettymoney">$<?= number_format($sales_totals->sub_total, 2) ?></td>
+                                                                                                            </tr>
+                                                                                                            </tbody>
+                                                                                                        </table>
+                                                                                                    </td>
+                                                                                                    <td class="info_pannel_column">
+                                                                                                        <table>
+                                                                                                            <tbody>
+                                                                                                            <tr class="odd" valign="top">
+                                                                                                                <td class="label">Cost</td>
+                                                                                                                <td id="infoPannelTotalsCostValue" class="info_field prettymoney">$<?= number_format($sales_totals->cost, 2) ?></td>
+                                                                                                            </tr>
+                                                                                                            <tr class="even" valign="top">
+                                                                                                                <td class="label">Profit</td>
+                                                                                                                <td id="infoPannelTotalsProfitValue" class="info_field prettymoney">$<?= number_format($sales_totals->profit, 2) ?></td>
+                                                                                                            </tr>
+                                                                                                            <tr class="odd" valign="top">
+                                                                                                                <td class="label">Margin</td>
+                                                                                                                <td id="infoPannelTotalsMarginValue" class="info_field prettymoney"><?= number_format($sales_totals->margin, 2) ?>%</td>
+                                                                                                            </tr>
+                                                                                                            </tbody>
+                                                                                                        </table>
+                                                                                                    </td>
+                                                                                                </tr>
+                                                                                                </tbody>
+                                                                                            </table>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                <?php endif; ?>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                    </tbody>
+                                                </table>
+                                            </td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </article>
 
@@ -516,7 +643,7 @@
                                                                     <div>
                                                                         <div>
                                                                             <div class="container" style="max-width: 100%;padding-top: 10px">
-                                                                                <table cellpadding="0" cellspacing="0" border="0" class="g-datatable datatable table table-striped table-bordered">
+                                                                                <table cellpadding="0" cellspacing="0" border="0" class="g-datatable datatable table table-striped table-bordered" width="100%">
                                                                                     <thead>
                                                                                     <tr>
                                                                                         <td>Product</td>

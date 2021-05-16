@@ -5,6 +5,7 @@ namespace Framework\controllers;
 
 
 use Framework\lib\AbstractController;
+use Framework\lib\AbstractModel;
 use Framework\lib\FilterInput;
 use Framework\lib\Helper;
 use Framework\lib\LoggerModel;
@@ -12,6 +13,7 @@ use Framework\lib\Redirect;
 use Framework\lib\Request;
 use Framework\Lib\Session;
 use Framework\models\CustomersModel;
+use Framework\models\InvoicesModel;
 use Framework\models\licenses\Digital_licenses_assignModel;
 use Framework\models\pos\DiscountsModel;
 use Framework\models\pos\Sales_paymentsModel;
@@ -30,11 +32,11 @@ class CustomersController extends AbstractController
     {
         $where = "WHERE users.role = 'customer' ";
         if (Request::Check('filter', 'get')) {
-            $where .= Request::Get('filter') == 'xero' ? " && !ISNULL(customers.ContactID) " : "";
+            $where .= Request::Get('filter') == 'xero' ? " && !ISNULL(customers.xero_ContactID) " : "";
         }
 
         $this->RenderPos([
-            'data' => CustomersModel::getCustomers($where)
+            'customers' => (new CustomersModel())->getCustomersPOS($where)->paginate()
         ]);
     }
 
@@ -43,47 +45,49 @@ class CustomersController extends AbstractController
         $id = ($this->_params) != null ? $this->_params[0] : false;
         if ($id !== false) {
             $customer = CustomersModel::getCustomers("WHERE users.id = '$id'", true);
-            $customer_sales = SalesModel::getAllSales("WHERE sales.customer_id = '$id'");
-            $customer_sales_items = SalesModel::getCustomerSalesItems($id);
+            if ($customer) {
+                $customer_sales = SalesModel::getAllSales("WHERE sales.customer_id = '$customer->customer_id'");
+                $customer_sales_items = SalesModel::getCustomerSalesItems($customer->customer_id);
 
+                $logs_stream = LoggerModel::getLogStream($id, 'customers');
+                $logs = (file_exists($logs_stream)) ? file_get_contents($logs_stream) : null;
+                $logs = array_reverse(explode('*', $logs));
 
-            $logs_stream = LoggerModel::getLogStream($id, 'customers');
-            $logs = (file_exists($logs_stream)) ? file_get_contents($logs_stream) : null;
-            $logs = array_reverse(explode('*', $logs));
+                $totals = array();
+                $original_subtotal = $discounts = $sub_total = $cost = 0;
 
-            $totals = array();
-            $original_subtotal = $discounts = $sub_total = $cost = 0;
-
-            if ($customer_sales_items) {
-                foreach ($customer_sales_items as $customer_sales_item) {
-                    if ($customer_sales_item->item_total > 0) {
-                        $original_subtotal += $customer_sales_item->original_price * $customer_sales_item->quantity;
-                        $discounts += $customer_sales_item->item_discount * $customer_sales_item->quantity;
-                        $sub_total += $customer_sales_item->item_total;
-                        $cost += $customer_sales_item->buy_price * $customer_sales_item->quantity;
+                if ($customer_sales_items) {
+                    foreach ($customer_sales_items as $customer_sales_item) {
+                        if ($customer_sales_item->item_total > 0) {
+                            $original_subtotal += $customer_sales_item->original_price * $customer_sales_item->quantity;
+                            $discounts += $customer_sales_item->item_discount * $customer_sales_item->quantity;
+                            $sub_total += $customer_sales_item->item_total;
+                            $cost += $customer_sales_item->buy_price * $customer_sales_item->quantity;
+                        }
                     }
+
+                    $totals = array(
+                        'original_sub_total' => $original_subtotal,
+                        'discounts' => $discounts,
+                        'sub_total' => $sub_total,
+                        'cost' => $cost,
+                        'profit' => $sub_total - $cost,
+                        'margin' => substr((($sub_total - $cost) / $cost) * 100, 0, 5)
+                    );
                 }
 
-                $totals = array(
-                    'original_sub_total' => $original_subtotal,
-                    'discounts' => $discounts,
-                    'sub_total' => $sub_total,
-                    'cost' => $cost,
-                    'profit' => $sub_total - $cost,
-                    'margin' => substr((($sub_total - $cost) / $cost) * 100, 0, 5)
-                );
+                $this->RenderPos([
+                    'customer' => $customer,
+                    'discounts' => DiscountsModel::getAll(),
+                    'invoices' => (new InvoicesModel)->getAllInvoicesWithCustomer("WHERE invoices.customer_id = '$customer->customer_id' || invoices.xero_ContactID = '$customer->xero_ContactID'")->fetchAll(),
+                    'sales' => $customer_sales,
+                    'sales_totals' => $totals ? (Object)$totals : $totals,
+                    'sales_payments' => Sales_paymentsModel::getCustomerSalesPayments($id),
+                    'quotes' => QuotesModel::getQuotes("WHERE customer_id = '$customer->customer_id'"),
+                    'logs' => $logs,
+                    'licenses' => Digital_licenses_assignModel::getCustomerLicenses("WHERE digital_licenses_assign.customer_id = '$customer->customer_id' GROUP BY digital_licenses_assign.id")
+                ]);
             }
-
-            $this->RenderPos([
-                'customer' => $customer,
-                'discounts' => DiscountsModel::getAll(),
-                'sales' => $customer_sales,
-                'sales_totals' => $totals ? (Object)$totals : $totals,
-                'sales_payments' => Sales_paymentsModel::getCustomerSalesPayments($id),
-                'quotes' => QuotesModel::getQuotes("WHERE customer_id = '$customer->customer_id'"),
-                'logs' => $logs,
-                'licenses' => Digital_licenses_assignModel::getCustomerLicenses("WHERE digital_licenses_assign.customer_id = '$customer->customer_id' GROUP BY digital_licenses_assign.id")
-            ]);
         }
     }
 

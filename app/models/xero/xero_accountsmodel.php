@@ -9,7 +9,7 @@ use Framework\Lib\AbstractModel;
 class Xero_accountsModel extends AbstractModel
 {
     public $id;
-    public $AccountID;
+    public $xero_AccountID;
     public $Code;
     public $Name;
     public $Type;
@@ -21,7 +21,7 @@ class Xero_accountsModel extends AbstractModel
     protected static $pk = 'id';
 
     protected $tableSchema = array(
-        'AccountID' => self::DATA_TYPE_STR,
+        'xero_AccountID' => self::DATA_TYPE_STR,
         'Code' => self::DATA_TYPE_STR,
         'Name' => self::DATA_TYPE_STR,
         'Type' => self::DATA_TYPE_STR,
@@ -29,14 +29,14 @@ class Xero_accountsModel extends AbstractModel
         'status' => self::DATA_TYPE_STR
     );
 
-    public static function getAccountsID()
+    public static function getAccountsID(): array
     {
-        $sql = "SELECT id, AccountID FROM xero_accounts";
+        $sql = "SELECT id, xero_AccountID FROM xero_accounts";
         $res = parent::getSQL($sql);
         $items = [];
         if ($res) {
             foreach ($res as $item) {
-                $items[$item->AccountID][] = $item->id;
+                $items[$item->xero_AccountID][] = $item->id;
             }
         }
         return $items;

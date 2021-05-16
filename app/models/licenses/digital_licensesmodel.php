@@ -43,7 +43,7 @@ class Digital_licensesModel extends AbstractModel
     public static function getItemsWithLicensesSummary()
     {
         $sql = "SELECT items.id, items.uid, items.item, 
-                    items_pricing.buy_price, items_pricing.rrp_price, 
+                    items.buy_price, items.rrp_price, 
                      (SELECT SUM(items_inventory.qoh) 
                       FROM items_inventory
                       WHERE items_inventory.item_id = items.id && items_inventory.qoh != 0
@@ -54,13 +54,7 @@ class Digital_licensesModel extends AbstractModel
                      SUM(CASE WHEN digital_licenses.item_id = items.id && digital_licenses.used = '1' && digital_licenses.expired != '1' THEN 1 ELSE 0 END) AS used_licenses_count,
                      SUM(CASE WHEN digital_licenses.item_id = items.id && digital_licenses.expired = '1' THEN 1 ELSE 0 END) AS expired_licenses_count
                      
-                 FROM items
-                 LEFT JOIN items_pricing ON items_pricing.id = (
-                    SELECT items_pricing.id
-                    FROM items_pricing
-                    WHERE items.id = items_pricing.item_id
-                    ORDER BY items_pricing.id ASC 
-                    LIMIT 1)
+                FROM items
                 LEFT JOIN digital_licenses ON digital_licenses.item_id = items.id
                 GROUP BY items.id
                 HAVING licenses_count > 0";

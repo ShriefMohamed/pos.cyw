@@ -5,6 +5,7 @@ namespace Framework\controllers;
 
 
 use Framework\Lib\AbstractController;
+use Framework\lib\AbstractModel;
 use Framework\lib\FilterInput;
 use Framework\lib\Helper;
 use Framework\lib\LoggerModel;
@@ -12,10 +13,15 @@ use Framework\lib\MailModel;
 use Framework\lib\Redirect;
 use Framework\lib\Request;
 use Framework\Lib\Session;
+use Framework\models\Invoice_linesModel;
+use Framework\models\Invoices_ordersModel;
+use Framework\models\Invoices_paymentsModel;
+use Framework\models\InvoicesModel;
 use Framework\models\pos\Inventory_counts_itemsModel;
 use Framework\models\pos\Inventory_counts_tmp_print_itemsModel;
 use Framework\models\pos\Inventory_countsModel;
-use Framework\models\pos\Items_inventory_headerModel;
+use Framework\models\pos\Item_xero_accountsModel;
+use Framework\models\pos\Items_auto_reorderModel;
 use Framework\models\pos\Items_inventory_movementsModel;
 use Framework\models\pos\Sales_shipmentsModel;
 use Framework\models\pos\Vendor_return_itemsModel;
@@ -29,7 +35,6 @@ use Framework\models\pos\BrandsModel;
 use Framework\models\pos\CategoriesModel;
 use Framework\models\pos\DiscountsModel;
 use Framework\models\pos\Items_inventoryModel;
-use Framework\models\pos\Items_pricingModel;
 use Framework\models\pos\ItemsModel;
 use Framework\models\pos\Payment_methodsModel;
 use Framework\models\pos\Pricing_levelsModel;
@@ -66,7 +71,7 @@ class PosController extends AbstractController
     public function ItemsAction()
     {
         $this->RenderPos([
-            'data' => ItemsModel::getItemsAvgPrice("WHERE items.is_misc != 1"),
+            'data' => (new ItemsModel)->getItemsAvgPrice("WHERE items.is_misc != 1 GROUP BY items.id")->paginate(),
             'departments' => ItemsModel::getAllDepartments(),
             'categories' => CategoriesModel::getAll(),
             'brands' => BrandsModel::getAll(),
@@ -144,10 +149,10 @@ class PosController extends AbstractController
             }
 
             $this->RenderPos([
-                'item' => ItemsModel::getItems("WHERE items.id = '$id'", true),
+                'item' => ItemsModel::getAllItemsDetails("WHERE items.id = '$id'", true),
                 'item_inventory' => ItemsModel::getAwaitingDispatch($id),
 
-                'item_avg_price' => Items_pricingModel::getAVGItemPrice($id),
+                'item_avg_price' => Items_inventoryModel::getAVGItemPrice($id),
                 'xero_accounts' => Xero_accountsModel::getAll(),
                 'departments' => ItemsModel::getAllDepartments(),
                 'categories' => CategoriesModel::getAll(),
@@ -158,7 +163,7 @@ class PosController extends AbstractController
                 'tax_classes' => Tax_classesModel::getAll(),
                 'pricing_levels' => Pricing_levelsModel::getAll(),
 
-                'inventory' => Items_pricingModel::getItemInventory($id),
+                'inventory' => Items_inventoryModel::getItemInventory($id),
                 'inventory_movements' => Items_inventory_movementsModel::getAll("WHERE item_id = '$id'"),
 
                 'sales' => $item_sales,
@@ -176,42 +181,34 @@ class PosController extends AbstractController
     {
         if (Request::Check('submit')) {
             $item = new ItemsModel();
-            $item->item = FilterInput::String(Request::Post('item'));
+            $item->item = FilterInput::CleanString(Request::Post('item'));
             $item->description = FilterInput::String(Request::Post('description'));
             $item->item_type = FilterInput::String(Request::Post('item_type'));
             $item->serialized = Request::Check('serialized') ? 1 : 2;
-            $item->shop_sku = FilterInput::String(Request::Post('shop_sku'));
-            $item->man_sku = FilterInput::String(Request::Post('man_sku'));
+            $item->shop_sku = FilterInput::CleanString(Request::Post('shop_sku'));
+            $item->man_sku = FilterInput::CleanString(Request::Post('man_sku'));
             $item->department = FilterInput::String(Request::Post('department'));
             $item->department_code = FilterInput::String(Request::Post('department'));
             $item->category = FilterInput::Int(Request::Post('category'));
             $item->brand = FilterInput::Int(Request::Post('brand'));
-            $item->tags = Request::Check('tags') ? implode(',', $_POST['tags']) : '';
+            $item->tags = Request::Re_Check('tags') ? implode(',', $_POST['tags']) : '';
 
-            $xero_account = Request::Check('xero_account') ? FilterInput::String(Request::Post('xero_account')) : false;
-            if ($xero_account !== false && $xero_account !== '0') {
-                $xero_account_ex = explode('|||', $xero_account);
-                $item->xero_account_id = $xero_account_ex[0];
-                $item->xero_account_code = $xero_account_ex[1];
-            }
+            $item->buy_price = FilterInput::Float(Request::Post('buy_price'));
+            $item->rrp_percentage = FilterInput::Int(Request::Post('rrp_percentage'));
+            $item->rrp_price = FilterInput::Float(Request::Post('rrp_price'));
 
             $item->discountable = Request::Check('discountable') ? 1 : 2;
             $item->tax_class = FilterInput::Int(Request::Post('tax_class'));
+            $item->is_tracked_as_inventory = Request::Check('is_tracked_as_inventory') ? 1 : 2;
 
             // generate uid (first 3 char of the item name)
             $uid = substr($item->item, 0, 3);
-            $uq_number = ItemsModel::generateUniqueNumber() ? ItemsModel::generateUniqueNumber()->random_num : 42561;
+            $uq_number = ItemsModel::generateUniqueNumber();
             $item->uid = strtoupper($uid) . $uq_number;
 
             // generate upc
-            $upc_code = 425667 . sprintf("%05d", ItemsModel::getNextID()->next_id);
+            $upc_code = 425667 . sprintf("%05d", ItemsModel::NextID());
             $item->upc = $upc_code . Helper::CalculateUpcCheckDigit($upc_code);
-
-            if (Request::Check('auto_reorder')) {
-                $item->auto_reorder = 1;
-                $item->reorder_point = FilterInput::Int(Request::Post('reorder_point'));
-                $item->reorder_level = FilterInput::Int(Request::Post('reorder_level'));
-            }
 
             if ($item->Save()) {
                 $this->logger->info("New Item was created successfully.", Helper::AppendLoggedin(['Item UID' => $item->uid]));
@@ -219,19 +216,67 @@ class PosController extends AbstractController
 
                 $item_id = ItemsModel::getColumns(['id'], "id = '$item->id'", true);
 
-                $pricing = new Items_pricingModel();
-                $pricing->item_id = $item_id;
-                $pricing->item_uid = $item->uid;
-                $pricing->buy_price = FilterInput::Float(Request::Post('buy_price'));
-                $pricing->rrp_percentage = FilterInput::Int(Request::Post('rrp_percentage'));
-                $pricing->rrp_price = FilterInput::Float(Request::Post('rrp_price'));
-                if ($pricing->Save()) {
-                    if (Request::Check('quantity')) {
+                // update item keywords
+                $get_item_keywords = ItemsModel::getItemKeywords($item_id);
+                $get_item_keywords = $get_item_keywords ? array_filter(array_shift($get_item_keywords), function($value) {return !is_null($value) && $value !== '';}) : [];
+                if ($get_item_keywords) {
+                    $item_keywords = new ItemsModel();
+                    $item_keywords->id = $item_id;
+                    $item_keywords->search_keywords = json_encode($get_item_keywords);
+                    $item_keywords->Save();
+                }
+
+
+                // create xero accounts record
+                $item_xero_accounts = new Item_xero_accountsModel();
+                $item_xero_accounts->item_id = $item_id;
+                $item_xero_accounts->item_uid = $item->uid;
+                $xero_ia_account = Request::Re_Check('xero_ia_account') ? FilterInput::String(Request::Post('xero_ia_account')) : false;
+                $xero_p_account = Request::Re_Check('xero_p_account') ? FilterInput::String(Request::Post('xero_p_account')) : false;
+                $xero_s_account = Request::Re_Check('xero_s_account') ? FilterInput::String(Request::Post('xero_s_account')) : false;
+
+                if ($xero_ia_account !== false && $xero_ia_account !== '0') {
+                    $xero_ia_account_ex = explode('|||', $xero_ia_account);
+                    $item_xero_accounts->inventory_asset_xero_account_id = $xero_ia_account_ex[0];
+                    $item_xero_accounts->inventory_asset_xero_account_code = $xero_ia_account_ex[1];
+                }
+                if ($xero_p_account !== false && $xero_p_account !== '0') {
+                    $xero_p_account_ex = explode('|||', $xero_p_account);
+                    $item_xero_accounts->purchase_xero_account_id = $xero_p_account_ex[0];
+                    $item_xero_accounts->purchase_xero_account_code = $xero_p_account_ex[1];
+                }
+                if ($xero_s_account !== false && $xero_s_account !== '0') {
+                    $xero_s_account_ex = explode('|||', $xero_s_account);
+                    $item_xero_accounts->sales_xero_account_id = $xero_s_account_ex[0];
+                    $item_xero_accounts->sales_xero_account_code = $xero_s_account_ex[1];
+                }
+                if (!$item_xero_accounts->Save()) {
+                    $this->logger->error("Failed to create item's xero accounts link.", Helper::AppendLoggedin(['Item UID' => $item->uid]));
+                }
+
+
+
+                // create item's auto re-order details
+                $item_auto_reorder = new Items_auto_reorderModel();
+                $item_auto_reorder->item_id = $item_id;
+                $item_auto_reorder->item_uid = $item->uid;
+                if (Request::Check('auto_reorder')) {
+                    $item_auto_reorder->auto_reorder = 1;
+                    $item_auto_reorder->reorder_point = FilterInput::Int(Request::Post('reorder_point'));
+                    $item_auto_reorder->reorder_level = FilterInput::Int(Request::Post('reorder_level'));
+                }
+
+
+
+                // create item's inventory record
+                if ($item->is_tracked_as_inventory == 1) {
+                    if (Request::Re_Check('quantity')) {
                         $inventory = new Items_inventoryModel();
                         $inventory->item_id = $item_id;
                         $inventory->item_uid = $item->uid;
                         $inventory->vendor_id = FilterInput::Int(Request::Post('vendor'));
-                        $inventory->pricing_id = $pricing->id;
+                        $inventory->buy_price = $item->buy_price;
+                        $inventory->rrp_price = $item->rrp_price;
                         $inventory->quantity = FilterInput::Int(Request::Post('quantity')) ? FilterInput::Int(Request::Post('quantity')) : 0;
                         $inventory->qoh = $inventory->quantity;
                         if ($inventory->Save()) {
@@ -243,28 +288,14 @@ class PosController extends AbstractController
                             $inventory_movement->source = "pos/item/".$item_id;
                             $inventory_movement->Save();
                         } else {
-                            $del_item = new ItemsModel();
-                            $del_item->id = $item->id;
-                            $del_item->Delete();
-
-                            $del_pricing = new Items_pricingModel();
-                            $del_pricing->id = $pricing->id;
-                            $del_pricing->Delete();
-
-                            $this->logger->info("Item deleted. Failed to create new item. Item inventory error!", Helper::AppendLoggedin(['Item UID' => $item->uid]));
-                            Helper::SetFeedback('error', "Failed to create item. Something wrong with quantity!");
+                            $this->logger->info("Item saved. but failed to create item's inventory!", Helper::AppendLoggedin(['Item UID' => $item->uid]));
+                            Helper::SetFeedback('error', "Item saved, but failed to create item's inventory.");
                         }
                     }
-
-                    Redirect::To('pos/items');
-                } else {
-                    $del_item = new ItemsModel();
-                    $del_item->id = $item->id;
-                    $del_item->Delete();
-
-                    $this->logger->error("Item deleted. Failed to create new item. Item pricing error!", Helper::AppendLoggedin(['Item UID' => $item->uid]));
-                    Helper::SetFeedback('error', "Failed to create item. Something wrong with pricing!");
                 }
+
+
+                Redirect::To('pos/items');
             } else {
                 $this->logger->error("Failed to create new item. Item insert error!", Helper::AppendLoggedin(['Item UID' => $item->uid]));
                 Helper::SetFeedback('error', "Failed to create item. Unknown error!");
@@ -284,9 +315,97 @@ class PosController extends AbstractController
         ]);
     }
 
-    public function Item_updateAction()
+    public function Item_updateAction($id)
     {
+        if (!empty($_POST)) {
+            $item = new ItemsModel();
+            $item->id = $id;
+            $item->item = FilterInput::CleanString(Request::Post('item'));
+            $item->description = FilterInput::String(Request::Post('description'));
+            $item->item_type = FilterInput::String(Request::Post('item_type'));
+            $item->serialized = Request::Check('serialized') ? 1 : 2;
 
+            $item->upc = FilterInput::Int(Request::Post('upc'));
+            $item->shop_sku = FilterInput::CleanString(Request::Post('shop_sku'));
+            $item->man_sku = FilterInput::CleanString(Request::Post('man_sku'));
+            $item->department = FilterInput::String(Request::Post('department'));
+            $item->department_code = FilterInput::String(Request::Post('department'));
+            $item->category = FilterInput::Int(Request::Post('category'));
+            $item->brand = FilterInput::Int(Request::Post('brand'));
+            $item->tags = Request::Re_Check('tags') ? implode(',', $_POST['tags']) : '';
+
+            $item->buy_price = FilterInput::Float(Request::Post('buy_price'));
+            $item->rrp_percentage = FilterInput::Int(Request::Post('rrp_percentage'));
+            $item->rrp_price = FilterInput::Float(Request::Post('rrp_price'));
+
+            $item->discountable = Request::Check('discountable') ? 1 : 2;
+            $item->tax_class = FilterInput::Int(Request::Post('tax_class'));
+            $item->is_tracked_as_inventory = Request::Check('is_tracked_as_inventory') ? 1 : 2;
+
+            if ($item->Save()) {
+                $this->logger->info("Item was updated successfully.", Helper::AppendLoggedin(['Item UID' => $item->uid]));
+                Helper::SetFeedback('success', "Item was updated successfully.");
+
+                $item_id = ItemsModel::getColumns(['id'], "id = '$item->id'", true);
+
+                // update item keywords
+                $get_item_keywords = ItemsModel::getItemKeywords($item_id);
+                $get_item_keywords = $get_item_keywords ? array_filter(array_shift($get_item_keywords), function($value) {return !is_null($value) && $value !== '';}) : [];
+                if ($get_item_keywords) {
+                    $item_keywords = new ItemsModel();
+                    $item_keywords->id = $item_id;
+                    $item_keywords->search_keywords = json_encode($get_item_keywords);
+                    $item_keywords->Save();
+                }
+
+
+                // create xero accounts record
+                $item_xero_accounts = new Item_xero_accountsModel();
+                $item_xero_accounts->id = FilterInput::Int(Request::Post('xero_accounts_id'));
+                $item_xero_accounts->item_id = $item_id;
+                $item_xero_accounts->item_uid = $item->uid;
+                $xero_ia_account = Request::Re_Check('xero_ia_account') ? FilterInput::String(Request::Post('xero_ia_account')) : false;
+                $xero_p_account = Request::Re_Check('xero_p_account') ? FilterInput::String(Request::Post('xero_p_account')) : false;
+                $xero_s_account = Request::Re_Check('xero_s_account') ? FilterInput::String(Request::Post('xero_s_account')) : false;
+
+                if ($xero_ia_account !== false && $xero_ia_account !== '0') {
+                    $xero_ia_account_ex = explode('|||', $xero_ia_account);
+                    $item_xero_accounts->inventory_asset_xero_account_id = $xero_ia_account_ex[0];
+                    $item_xero_accounts->inventory_asset_xero_account_code = $xero_ia_account_ex[1];
+                }
+                if ($xero_p_account !== false && $xero_p_account !== '0') {
+                    $xero_p_account_ex = explode('|||', $xero_p_account);
+                    $item_xero_accounts->purchase_xero_account_id = $xero_p_account_ex[0];
+                    $item_xero_accounts->purchase_xero_account_code = $xero_p_account_ex[1];
+                }
+                if ($xero_s_account !== false && $xero_s_account !== '0') {
+                    $xero_s_account_ex = explode('|||', $xero_s_account);
+                    $item_xero_accounts->sales_xero_account_id = $xero_s_account_ex[0];
+                    $item_xero_accounts->sales_xero_account_code = $xero_s_account_ex[1];
+                }
+                if (!$item_xero_accounts->Save()) {
+                    $this->logger->error("Failed to update item's xero accounts link.", Helper::AppendLoggedin(['Item UID' => $item->uid]));
+                }
+
+
+
+                // create item's auto re-order details
+                $item_auto_reorder = new Items_auto_reorderModel();
+                $item_auto_reorder->id = FilterInput::Int(Request::Post('auto_reorder_id'));
+                $item_auto_reorder->item_id = $item_id;
+                $item_auto_reorder->item_uid = $item->uid;
+                if (Request::Check('auto_reorder')) {
+                    $item_auto_reorder->auto_reorder = 1;
+                    $item_auto_reorder->reorder_point = FilterInput::Int(Request::Post('reorder_point'));
+                    $item_auto_reorder->reorder_level = FilterInput::Int(Request::Post('reorder_level'));
+                }
+            } else {
+                $this->logger->error("Failed to update item. database error!", Helper::AppendLoggedin(['Item UID' => $item->uid]));
+                Helper::SetFeedback('error', "Failed to update item. Unknown database error!");
+            }
+
+            Redirect::To('pos/item/'.$item_id);
+        }
     }
 
     public function Items_importAction()
@@ -331,12 +450,13 @@ class PosController extends AbstractController
                             if ($i > 1) {
                                 if (!empty($varArray)) {
                                     $item = new ItemsModel();
+                                    $item->source = 'csv_import';
                                     $item->item_number = isset($array[$varArray['Item Number']]) ? FilterInput::Int($array[$varArray['Item Number']]) : '';
 
                                     if ($item->item_number) {
-                                        $check_item = ItemsModel::getAll("WHERE item_number = '$item->item_number'", true);
+                                        $check_item = ItemsModel::getColumns(['id'], "item_number = '$item->item_number'", true);
                                         if ($check_item) {
-                                            $item->id = $check_item->id;
+                                            $item->id = $check_item;
                                         }
                                     }
 
@@ -345,11 +465,22 @@ class PosController extends AbstractController
                                     $item->department = FilterInput::String($array[$varArray['Department Name']]);
                                     $item->department_code = FilterInput::String($array[$varArray['Department Code']]);
                                     $item->discountable = isset($array[$varArray['Eligible for Commission']]) && FilterInput::String($array[$varArray['Eligible for Commission']]) == "Yes" ? 1 : 2;
+
+                                    $item->buy_price = isset($array[$varArray['Average Unit Cost']]) && $array[$varArray['Average Unit Cost']] ?
+                                        FilterInput::Float($array[$varArray['Average Unit Cost']]) :
+                                        0;
+                                    $item->rrp_price = isset($array[$varArray['Regular Price']]) && $array[$varArray['Regular Price']] ?
+                                        FilterInput::Float($array[$varArray['Regular Price']]) :
+                                        0;
+                                    if ($item->buy_price > 0 && $item->rrp_price > 0) {
+                                        $item->rrp_percentage = substr(((($item->rrp_price - $item->buy_price) / $item->buy_price) * 100), 0, 3);
+                                    }
+
                                     $tax_code = isset($array[$varArray['Tax Code']]) && FilterInput::String($array[$varArray['Tax Code']]) ? FilterInput::String($array[$varArray['Tax Code']]) : false;
                                     if ($tax_code) {
-                                        $tax_class_id = Tax_classesModel::getAll("WHERE class = '$tax_code'", true);
+                                        $tax_class_id = Tax_classesModel::getColumns(['id'], "class LIKE '%$tax_code%'", true);
                                         if ($tax_class_id) {
-                                            $item->tax_class = $tax_class_id->id;
+                                            $item->tax_class = $tax_class_id;
                                         } else {
                                             $tax_class = new Tax_classesModel();
                                             $tax_class->class = $tax_code;
@@ -358,87 +489,82 @@ class PosController extends AbstractController
                                                 $item->tax_class = $tax_class->id;
                                             }
                                         }
+                                    } else {
+                                        $gst_tax = Tax_classesModel::getColumns(['id'], "class LIKE '%GST%'", true);
+                                        if ($gst_tax) {
+                                            $item->tax_class = $gst_tax;
+                                        }
                                     }
+
 
                                     // generate uid (first 3 char of the item name)
                                     $uid = substr($item->item, 0, 3);
-                                    $uq_number = ItemsModel::generateUniqueNumber() ? ItemsModel::generateUniqueNumber()->random_num : 42561;
+                                    $uq_number = ItemsModel::generateUniqueNumber();
                                     $item->uid = strtoupper($uid) . $uq_number;
 
                                     // generate upc
-                                    $upc_code = 425667 . sprintf("%05d", ItemsModel::getNextID()->next_id);
+                                    $upc_code = 425667 . sprintf("%05d", ItemsModel::NextID());
                                     $item->upc = $upc_code . Helper::CalculateUpcCheckDigit($upc_code);
-
-
-                                    // assign xero account
-                                    if ($item->department == 'Service' || $item->department == 'Services' || $item->department == 'Labour') {
-                                        $xero_account_code = "200";
-                                    } elseif ($item->department == 'Phone Parts' || $item->department == 'Mobile & Tablet Parts') {
-                                        $xero_account_code = "209";
-                                    } elseif ($item->department == 'EFT') {
-                                        $xero_account_code = "220";
-                                    } else {
-                                        $xero_account_code = "210";
-                                    }
-                                    $check_xero_account = Xero_accountsModel::getAll("WHERE Code = '$xero_account_code'", true);
-                                    if ($check_xero_account) {
-                                        $item->xero_account_id = $check_xero_account->id;
-                                        $item->xero_account_code = $xero_account_code;
-                                    }
 
                                     if ($item->Save()) {
                                         $item_id = ItemsModel::getColumns(['id'], "id = '$item->id'", true);
 
-                                        $create_pricing = true;
-                                        $buy_price = isset($array[$varArray['Average Unit Cost']]) && $array[$varArray['Average Unit Cost']] ?
-                                            FilterInput::Float($array[$varArray['Average Unit Cost']]) :
-                                            0;
-                                        $rrp_price = isset($array[$varArray['Regular Price']]) && $array[$varArray['Regular Price']] ?
-                                            FilterInput::Float($array[$varArray['Regular Price']]) :
-                                            0;
-
-                                        $check_item_pricings = Items_pricingModel::getAll("WHERE item_id = '".$item_id."'");
-                                        if ($check_item_pricings) {
-                                            foreach ($check_item_pricings as $check_item_pricing) {
-                                                if ($check_item_pricing->buy_price == $buy_price && $check_item_pricing->rrp_price == $rrp_price) {
-                                                    $create_pricing = false;
-                                                }
-                                            }
+                                        // update item keywords
+                                        $get_item_keywords = ItemsModel::getItemKeywords($item_id);
+                                        $get_item_keywords = $get_item_keywords ? array_filter(array_shift($get_item_keywords), function($value) {return !is_null($value) && $value !== '';}) : [];
+                                        if ($get_item_keywords) {
+                                            $item_keywords = new ItemsModel();
+                                            $item_keywords->id = $item_id;
+                                            $item_keywords->search_keywords = json_encode($get_item_keywords);
+                                            $item_keywords->Save();
                                         }
 
+                                        // create xero accounts record
+                                        $item_xero_accounts = new Item_xero_accountsModel();
+                                        $item_xero_accounts->item_id = $item_id;
+                                        $item_xero_accounts->item_uid = $item->uid;
 
-                                        if ($create_pricing) {
-                                            $pricing = new Items_pricingModel();
-                                            $pricing->item_id = $item_id;
-                                            $pricing->item_uid = $item->uid;
-                                            $pricing->buy_price = $buy_price;
-                                            $pricing->rrp_price = $rrp_price;
-                                            if ($pricing->buy_price > 0 && $pricing->rrp_price > 0) {
-                                                $pricing->rrp_percentage = substr(((($pricing->rrp_price - $pricing->buy_price) / $pricing->buy_price) * 100), 0, 3);
-                                            }
+                                        if ($item->department == 'Service' || $item->department == 'Services' || $item->department == 'Labour') {
+                                            $xero_account_code = "200";
+                                        } elseif ($item->department == 'Phone Parts' || $item->department == 'Mobile & Tablet Parts') {
+                                            $xero_account_code = "209";
+                                        } elseif ($item->department == 'EFT') {
+                                            $xero_account_code = "220";
+                                        } else {
+                                            $xero_account_code = "210";
+                                        }
+                                        $check_xero_account = Xero_accountsModel::getColumns(['id'], "Code = '$xero_account_code'", true);
+                                        if ($check_xero_account) {
+                                            $item_xero_accounts->inventory_asset_xero_account_id = $check_xero_account;
+                                            $item_xero_accounts->inventory_asset_xero_account_code = $xero_account_code;
+                                            $item_xero_accounts->purchase_xero_account_id = $check_xero_account;
+                                            $item_xero_accounts->purchase_xero_account_code = $xero_account_code;
+                                            $item_xero_accounts->sales_xero_account_id = $check_xero_account;
+                                            $item_xero_accounts->sales_xero_account_code = $xero_account_code;
+                                        }
 
-                                            if ($pricing->Save()) {
-                                                if (isset($array[$varArray['Qty 1']]) && $array[$varArray['Qty 1']]) {
-                                                    $inventory = new Items_inventoryModel();
-                                                    $inventory->item_id = $item_id;
-                                                    $inventory->item_uid = $item->uid;
-                                                    $inventory->pricing_id = $pricing->id;
-                                                    $inventory->quantity = $array[$varArray['Qty 1']];
-                                                    $inventory->qoh = $inventory->quantity;
-                                                    if ($inventory->Save()) {
-                                                        $inventory_movement = new Items_inventory_movementsModel();
-                                                        $inventory_movement->item_id = $item_id;
-                                                        $inventory_movement->inventory_header_id = $inventory->id;
-                                                        $inventory_movement->type = 'imported item';
-                                                        $inventory_movement->quantity = $inventory->quantity;
-                                                        $inventory_movement->source = "pos/item/" . $item_id;
-                                                        $inventory_movement->Save();
-                                                    } else {
-                                                        $this->logger->info("Failed to create inventory for imported item. Item inventory error!", Helper::AppendLoggedin(['Item UID' => $item->uid, 'Item' => $item->item]));
-                                                    }
-                                                }
+                                        $item_xero_accounts->Save();
+
+
+                                        // create item's inventory record
+                                        if (isset($array[$varArray['Qty 1']]) && $array[$varArray['Qty 1']]) {
+                                            $inventory = new Items_inventoryModel();
+                                            $inventory->item_id = $item_id;
+                                            $inventory->item_uid = $item->uid;
+                                            $inventory->buy_price = $item->buy_price;
+                                            $inventory->rrp_price = $item->rrp_price;
+                                            $inventory->quantity = FilterInput::Int($array[$varArray['Qty 1']]);
+                                            $inventory->qoh = $inventory->quantity;
+                                            if ($inventory->Save()) {
+                                                $inventory_movement = new Items_inventory_movementsModel();
+                                                $inventory_movement->item_id = $item_id;
+                                                $inventory_movement->inventory_header_id = $inventory->id;
+                                                $inventory_movement->type = 'imported item';
+                                                $inventory_movement->quantity = $inventory->quantity;
+                                                $inventory_movement->source = "pos/item/" . $item_id;
+                                                $inventory_movement->Save();
                                             } else {
-                                                $this->logger->error("Failed to create pricing for imported item. Item pricing error!", Helper::AppendLoggedin(['Item UID' => $item->uid, 'Item' => $item->item]));
+                                                $this->logger->info("Failed to create inventory for imported item. Item inventory error!", Helper::AppendLoggedin(['Item UID' => $item->uid, 'Item' => $item->item]));
                                             }
                                         }
                                     } else {
@@ -467,45 +593,41 @@ class PosController extends AbstractController
     {
         $id = ($this->_params) != null ? $this->_params[0] : false;
         if ($id !== false) {
-            $item = ItemsModel::getOne($id);
-            if ($item) {
+            $item_id = ItemsModel::getColumns(['id', 'uid'], "id = '$id'", true);
+            if ($item_id) {
                 if (Request::Check('submit')) {
-                    $item_pricing = new Items_pricingModel();
-                    $item_pricing->item_id = $id;
-                    $item_pricing->item_uid = $item->uid;
-                    $item_pricing->buy_price = FilterInput::Float(Request::Post('add_inventory1_cost'));
-                    $item_pricing->rrp_percentage = 30;
-                    $rrp = (30 / 100) * $item_pricing->buy_price;
-                    $item_pricing->rrp_price = $rrp + $item_pricing->buy_price;
-                    if ($item_pricing->Save()) {
+                    $item = new ItemsModel();
+                    $item->id = $id;
+                    $item->buy_price = FilterInput::Float(Request::Post('add_inventory1_cost'));
+                    $item->rrp_percentage = 30;
+                    $rrp = (30 / 100) * $item->buy_price;
+                    $item->rrp_price = $rrp + $item->buy_price;
+                    if ($item->Save()) {
                         $item_inventory = new Items_inventoryModel();
-                        $item_inventory->item_id = $id;
-                        $item_inventory->item_uid = $item->uid;
+                        $item_inventory->item_id = $item_id['id'];
+                        $item_inventory->item_uid = $item_id['uid'];
                         $item_inventory->vendor_id = FilterInput::Int(Request::Post('add_inventory1_vendor'));
-                        $item_inventory->pricing_id = $item_pricing->id;
+                        $item_inventory->buy_price = $item->buy_price;
+                        $item_inventory->rrp_price = $item->rrp_price;
                         $item_inventory->quantity = FilterInput::Int(Request::Post('add_inventory1_quantity'));
                         $item_inventory->qoh = FilterInput::Int(Request::Post('add_inventory1_quantity'));
                         if ($item_inventory->Save()) {
                             $inventory_movement = new Items_inventory_movementsModel();
-                            $inventory_movement->item_id = $id;
+                            $inventory_movement->item_id = $item_id['id'];
                             $inventory_movement->inventory_header_id = $item_inventory->id;
                             $inventory_movement->type = 'manually added';
                             $inventory_movement->quantity = $item_inventory->quantity;
                             $inventory_movement->source = "pos/item/$id";
                             $inventory_movement->Save();
 
-                            $this->logger->info("Item inventory was created successfully.", Helper::AppendLoggedin(['Item UID' => $item->uid]));
+                            $this->logger->info("Item inventory was created successfully.", Helper::AppendLoggedin(['Item UID' => $item_id['uid']]));
                             Helper::SetFeedback('success', "Inventory was created successfully.");
                         } else {
-                            $del_pricing = new Items_pricingModel();
-                            $del_pricing->id = $item_pricing->id;
-                            $del_pricing->Delete();
-
-                            $this->logger->info("Failed to add inventory. Item inventory error!", Helper::AppendLoggedin(['Item UID' => $item->uid]));
+                            $this->logger->info("Failed to add inventory. Item inventory error!", Helper::AppendLoggedin(['Item UID' => $item_id['uid']]));
                             Helper::SetFeedback('error', "Failed to add inventory. Something wrong with quantity!");
                         }
                     } else {
-                        $this->logger->info("Failed to add inventory. Item pricing error!", Helper::AppendLoggedin(['Item UID' => $item->uid]));
+                        $this->logger->info("Failed to add inventory. Item pricing update error!", Helper::AppendLoggedin(['Item UID' => $item_id['uid']]));
                         Helper::SetFeedback('error', "Failed to add inventory. Something wrong with pricing!");
                     }
 
@@ -633,6 +755,11 @@ class PosController extends AbstractController
                     }
                 }
 
+                $total_completed = Purchase_orders_itemsModel::getCompletedItemsTotal($id);
+                if ($total_completed > 0) {
+                    $total += floatval($total_completed);
+                }
+
                 $order = new Purchase_ordersModel();
                 $order->id = $id;
                 $order->status = FilterInput::String(Request::Post('status'));
@@ -676,6 +803,7 @@ class PosController extends AbstractController
                     }
                 }
             }
+
             $this->RenderPos([
                 'order' => Purchase_ordersModel::getPurchaseOrder($id),
                 'order_items' => Purchase_orders_itemsModel::getPurchaseOrderItems("WHERE order_id = '$id'"),
@@ -737,18 +865,18 @@ class PosController extends AbstractController
             $return = true;
             if ($order_items) {
                 foreach ($order_items as $order_item) {
-                    $pricing = new Items_pricingModel();
-                    $pricing->item_id = $order_item->item_id;
-                    $pricing->item_uid = $order_item->uid;
-                    $pricing->buy_price = $order_item->buy_price;
-                    $pricing->rrp_percentage = $order_item->percentage;
-                    $pricing->rrp_price = $order_item->price;
-                    if ($pricing->Save()) {
+                    $item = new ItemsModel();
+                    $item->id = $order_item->item_id;
+                    $item->buy_price = $order_item->buy_price;
+                    $item->rrp_percentage = $order_item->percentage;
+                    $item->rrp_price = $order_item->price;
+                    if ($item->Save()) {
                         $inventory = new Items_inventoryModel();
                         $inventory->item_id = $order_item->item_id;
                         $inventory->item_uid = $order_item->uid;
                         $inventory->vendor_id = $order_item->vendor_id;
-                        $inventory->pricing_id = $pricing->id;
+                        $inventory->buy_price = $item->buy_price;
+                        $inventory->rrp_price = $item->rrp_price;
                         $inventory->quantity = $order_item->quantity;
                         $inventory->qoh = $order_item->quantity;
                         if ($inventory->Save()) {
@@ -760,24 +888,20 @@ class PosController extends AbstractController
                             $inventory_movement->source = "pos/purchase_order/$id";
                             $inventory_movement->Save();
 
-                            $item = new Purchase_orders_itemsModel();
-                            $item->id = $order_item->id;
-                            $item->status = 'completed';
-                            if ($item->Save()) {
+                            $po_item = new Purchase_orders_itemsModel();
+                            $po_item->id = $order_item->id;
+                            $po_item->status = 'completed';
+                            if ($po_item->Save()) {
                                 $this->logger->info("Purchase order's received item was moved to inventory successfully.", Helper::AppendLoggedin(['Order ID' => $order_item->order_id, 'Item UID' => $order_item->uid]));
                             } else {
                                 $this->logger->error("Purchase order's received item was moved to inventory, but failed to mark item as complete!", Helper::AppendLoggedin(['Order ID' => $order_item->order_id, 'Item UID' => $order_item->uid]));
                             }
                         } else {
-                            $delete_pricing = new Items_pricingModel();
-                            $delete_pricing->id = $pricing->id;
-                            $delete_pricing->Delete();
-
                             $this->logger->error("Failed to move purchase order's received item to inventory. Item inventory error!", Helper::AppendLoggedin(['Order ID' => $order_item->order_id, 'Item UID' => $order_item->uid]));
                             $return = false;
                         }
                     } else {
-                        $this->logger->error("Failed to move purchase order's received item to inventory. Item pricing error!", Helper::AppendLoggedin(['Order ID' => $order_item->order_id, 'Item UID' => $order_item->uid]));
+                        $this->logger->error("Failed to move purchase order's received item to inventory. Item pricing update error!", Helper::AppendLoggedin(['Order ID' => $order_item->order_id, 'Item UID' => $order_item->uid]));
                         $return = false;
                     }
                 }
@@ -842,7 +966,6 @@ class PosController extends AbstractController
                         $return_item->return_reason_id = FilterInput::Int($item_post['return_reason']);
                         $return_item->item_id = FilterInput::String($key);
                         $return_item->inventory_id = $item_details->item_inventory_id;
-                        $return_item->pricing_id = $item_details->item_pricing_id;
                         $return_item->quantity = $item_post['quantity'] ? FilterInput::Int($item_post['quantity']) : 0;
                         $return_item->cost = FilterInput::Float($item_post['cost']);
                         $return_item->subtotal = $return_item->quantity && $return_item->cost ? $return_item->quantity * $return_item->cost : 0;
@@ -901,13 +1024,12 @@ class PosController extends AbstractController
                         if ($item_details) {
                             $return_item = new Vendor_return_itemsModel();
                             $return_item->vendor_return_id = $id;
-                            $return_item->purchase_order_item_id = FilterInput::Int($item_post['purchase_order_item_id']);
-                            $return_item->return_reason_id = FilterInput::Int($item_post['return_reason']);
+                            $return_item->purchase_order_item_id = isset($item_post['purchase_order_item_id']) ? FilterInput::Int($item_post['purchase_order_item_id']) : 0;
+                            $return_item->return_reason_id = isset($item_post['return_reason']) ? FilterInput::Int($item_post['return_reason']) : 0;
                             $return_item->item_id = FilterInput::String($key);
                             $return_item->inventory_id = $item_details->item_inventory_id;
-                            $return_item->pricing_id = $item_details->item_pricing_id;
-                            $return_item->quantity = $item_post['quantity'] ? FilterInput::Int($item_post['quantity']) : 0;
-                            $return_item->cost = FilterInput::Float($item_post['cost']);
+                            $return_item->quantity = isset($item_post['quantity']) ? FilterInput::Int($item_post['quantity']) : 0;
+                            $return_item->cost = isset($item_post['cost']) ? FilterInput::Float($item_post['cost']) : 0;
                             $return_item->subtotal = $return_item->quantity && $return_item->cost ? $return_item->quantity * $return_item->cost : 0;
 
                             if (!$return_item->Save()) {
@@ -938,10 +1060,10 @@ class PosController extends AbstractController
                     foreach ($_POST['vr-items'] as $key => $item_post) {
                         $return_item = new Vendor_return_itemsModel();
                         $return_item->id = FilterInput::String($item_post['id']);
-                        $return_item->purchase_order_item_id = isset($item_post['purchase_order_item_id']) ? FilterInput::Int($item_post['purchase_order_item_id']) : '';
-                        $return_item->return_reason_id = FilterInput::Int($item_post['return_reason']);
-                        $return_item->quantity = $item_post['quantity'] ? FilterInput::Int($item_post['quantity']) : 0;
-                        $return_item->cost = FilterInput::Float($item_post['cost']);
+                        $return_item->purchase_order_item_id = isset($item_post['purchase_order_item_id']) ? FilterInput::Int($item_post['purchase_order_item_id']) : 0;
+                        $return_item->return_reason_id = isset($item_post['return_reason']) ? FilterInput::Int($item_post['return_reason']) : 0;
+                        $return_item->quantity = isset($item_post['quantity']) ? FilterInput::Int($item_post['quantity']) : 0;
+                        $return_item->cost = isset($item_post['cost']) ? FilterInput::Float($item_post['cost']) : 0;
                         $return_item->subtotal = $return_item->quantity && $return_item->cost ? $return_item->quantity * $return_item->cost : 0;
 
                         if (!$return_item->Save()) {
@@ -1758,9 +1880,8 @@ class PosController extends AbstractController
         $where .= $status_filter && $type_filter ? " && " : "";
         $where .= $type_filter ? " sales.sale_type = '$type_filter'" : "";
 
-        $sales = SalesModel::getAllSales($where);
         $this->RenderPos([
-            'data' => $sales
+            'data' => SalesModel::getAllSales($where)
         ]);
     }
 
@@ -1793,12 +1914,14 @@ class PosController extends AbstractController
         if (!empty($_POST)) {
             $sale = new SalesModel();
 
-            $uid_code = 445137 . sprintf("%05d", SalesModel::getNextID()->next_id);
+            $uid_code = 445137 . sprintf("%05d", SalesModel::NextID());
             $sale->uid = $uid_code . Helper::CalculateUpcCheckDigit($uid_code);
-            $sale->customer_id = FilterInput::Int(Request::Post('user-id'));
+            $sale->customer_id = FilterInput::Int(Request::Post('customer-id'));
             $sale->pricing_level = FilterInput::Int(Request::Post('pricing-level'));
             $sale->printed_note = FilterInput::String(Request::Post('printed_note'));
             $sale->internal_note = FilterInput::String(Request::Post('internal_note'));
+
+            $user_id = FilterInput::Int(Request::Post('user-id'));
 
             if (isset($_POST['items']) && !empty($_POST['items'])) {
                 $items = array();
@@ -1815,13 +1938,13 @@ class PosController extends AbstractController
                         $item_details = ItemsModel::getItemInventoryPricingTaxDetails($item->item_id);
 
                         if ($item_details) {
+                            $item->item = $item_details->item;
                             $item->tax_id = $item_details->tax_class;
                             $item->inventory_id = $item_details->item_inventory_id;
-                            $item->pricing_id = $item_details->item_pricing_id;
 
                             // calc item's price based on the pricing level (if any, else use the RRP price)
                             $item->original_price = $item_details->rrp_price;
-                            if ($sale->pricing_level && $sale->pricing_level !== '0') {
+                            if ($sale->pricing_level && $sale->pricing_level != 0) {
                                 $pricing_level = Pricing_levelsModel::getOne($sale->pricing_level);
                                 if ($pricing_level) {
                                     $level_rate = strtolower($pricing_level->teir) == "teir 2" ? ($item_details->rrp_percentage / 2) : $pricing_level->rate;
@@ -1845,10 +1968,12 @@ class PosController extends AbstractController
                             }
 
                             $item->total = $item->price * abs($item->quantity);
+                            $item->tax = ($item->price * abs($item->quantity)) * $item_details->rate / 100;
+
+                            $sale_discount += isset($item->discount) ? $item->discount * abs($item->quantity) : 0;
+                            $tax += $item->tax;
                             $subtotal += $item->price * abs($item->quantity);
                             $total += $item->price * abs($item->quantity);
-                            $sale_discount += isset($item->discount) ? $item->discount * abs($item->quantity) : 0;
-                            $tax += ($item->price * abs($item->quantity)) * $item_details->rate / 100;
                         }
 
                         array_push($items, $item);
@@ -1870,6 +1995,30 @@ class PosController extends AbstractController
                 }
 
                 if ($sale->Save()) {
+                    // Create sale invoice.
+                    $invoice = new InvoicesModel();
+                    $invoice->reference = InvoicesModel::NextID("LPAD(MAX(auto_increment),5,'0')");
+                    $invoice->customer_id = $sale->customer_id ?: 0;
+                    $invoice->subtotal = $sale->subtotal;
+                    $invoice->discount = $sale->discount;
+                    $invoice->tax = $sale->tax;
+                    $invoice->total = $sale->total;
+                    $invoice->amount_due = $sale->total;
+                    $invoice->status = 'unpaid';
+                    if (!$invoice->Save()) {
+                        $this->logger->error("Failed to create sale's invoice. Must be corrected manually.", Helper::AppendLoggedin(['Sale' => $sale->uid]));
+                        Helper::SetFeedback('error', "Failed to create sale's invoice. Must be corrected manually.");
+                    } else {
+                        $invoices_orders = new Invoices_ordersModel();
+                        $invoices_orders->invoice_id = $invoice->id;
+                        $invoices_orders->order_id = $sale->id;
+                        $invoices_orders->type = 'sale';
+                        if (!$invoices_orders->Save()) {
+                            $this->logger->error("Failed to create sale - invoice link. Must be corrected manually.", Helper::AppendLoggedin(['Sale' => $sale->uid, 'Invoice ID' => $invoice->id]));
+                        }
+                    }
+
+
                     foreach ($items as $std_item) {
                         $sale_item = new Sales_itemsModel();
                         $sale_item->sale_id = $sale->id;
@@ -1879,13 +2028,33 @@ class PosController extends AbstractController
                         }
 
                         if (!$sale_item->Save()) {
-                            $this->logger->error("Sale was created, but some items weren't saved!", Helper::AppendLoggedin(['Sale UID' => $sale->uid, 'Item ID' => $std_item->item_id]));
+                            $this->logger->error("Sale was saved, but some items weren't saved!", Helper::AppendLoggedin(['Sale UID' => $sale->uid, 'Item ID' => $std_item->item_id]));
+                            Helper::SetFeedback('error', "Sale was saved, but some items weren't saved!");
+                        }
+
+
+                        // invoice lines
+                        if ($invoice->id) {
+                            $invoice_line = new Invoice_linesModel();
+                            $invoice_line->invoice_id = $invoice->id;
+                            $invoice_line->product_id = $std_item->item_id;
+                            $invoice_line->tax_id = $std_item->tax_id;
+                            $invoice_line->product_name = $std_item->item;
+                            $invoice_line->quantity = $std_item->quantity;
+                            $invoice_line->unit_price = $std_item->original_price;
+                            $invoice_line->discount = $std_item->discount;
+                            $invoice_line->tax = $std_item->tax;
+                            $invoice_line->total = $std_item->total;
+                            if (!$invoice_line->Save()) {
+                                $this->logger->error("Sale's invoice was saved, but some items weren't saved!", Helper::AppendLoggedin(['Sale UID' => $sale->uid, 'Item ID' => $std_item->item_id]));
+                                Helper::SetFeedback('error', "Sale's invoice was saved, but some items weren't saved!");
+                            }
                         }
                     }
 
                     if (Request::Check('register-customer-shipping')) {
                         $shipment_user_update = new UsersModel();
-                        $shipment_user_update->id = $sale->customer_id;
+                        $shipment_user_update->id = $user_id;
                         $shipment_user_update->firstName = Request::Post('f_name');
                         $shipment_user_update->lastName = Request::Post('l_name');
                         $shipment_user_update->phone = Request::Post('phone');
@@ -1893,7 +2062,7 @@ class PosController extends AbstractController
                         $shipment_user_update->Save();
 
                         $shipment_customer_update = new CustomersModel();
-                        $shipment_customer_update->id = Request::Post('customer-id');
+                        $shipment_customer_update->id = $sale->customer_id;
                         $shipment_customer_update->address = Request::Post('address');
                         $shipment_customer_update->address2 = Request::Post('address2');
                         $shipment_customer_update->city = Request::Post('city');
@@ -1914,7 +2083,7 @@ class PosController extends AbstractController
 
                     $this->logger->info("Sale was saved successfully.", Helper::AppendLoggedin(['Sale UID' => $sale->uid]));
                     if ($sale->customer_id) {
-                        LoggerModel::Instance($sale->customer_id, 'customers')
+                        LoggerModel::Instance($user_id, 'customers')
                             ->InitializeLogger()
                             ->info("Sale was created for customer.", Helper::AppendLoggedin(['Sale ID' => $sale->uid]));
                     }
@@ -1926,7 +2095,7 @@ class PosController extends AbstractController
                 } else {
                     $this->logger->error("Failed to create new sale. General saving error!", Helper::AppendLoggedin([]));
                     if ($sale->customer_id) {
-                        LoggerModel::Instance($sale->customer_id, 'customers')
+                        LoggerModel::Instance($user_id, 'customers')
                             ->InitializeLogger()
                             ->error("Failed to create new sale for customer.", Helper::AppendLoggedin());
                     }
@@ -1960,176 +2129,260 @@ class PosController extends AbstractController
         }
     }
 
-    public function Sale_continueAction()
+    public function Sale_continueAction($id)
     {
-        $id = ($this->_params) != null ? $this->_params[0] : false;
-        if ($id !== false) {
-            if (!empty($_POST)) {
-                $sale = new SalesModel();
-                $sale->id = $id;
-                $sale->customer_id = Request::Check('customer-id') ? FilterInput::Int(Request::Post('customer-id')) : 0;
-                $sale->pricing_level = FilterInput::Int(Request::Post('pricing-level'));
-                $sale->printed_note = FilterInput::String(Request::Post('printed_note'));
-                $sale->internal_note = FilterInput::String(Request::Post('internal_note'));
+        if (!empty($_POST)) {
+            $sale = new SalesModel();
+            $sale->id = $id;
+            $sale->customer_id = Request::Re_Check('customer-id') ? FilterInput::Int(Request::Post('customer-id')) : 0;
+            $sale->pricing_level = FilterInput::Int(Request::Post('pricing-level'));
+            $sale->printed_note = FilterInput::String(Request::Post('printed_note'));
+            $sale->internal_note = FilterInput::String(Request::Post('internal_note'));
 
-                if (isset($_POST['items']) && !empty($_POST['items'])) {
-                    $items = array();
-                    $subtotal = $total = $sale_discount = $tax = 0;
-                    foreach ($_POST['items'] as $item_post) {
-                        if (isset($item_post['id']) && !empty($item_post['id'])) {
-                            $item = new \stdClass();
-                            $item->sale_item_id = isset($item_post['sale_item_id']) && $item_post['sale_item_id'] ? $item_post['sale_item_id'] : 0;
-                            $item->item_id = $item_post['id'];
-                            $item->item_type = $item_post['type'] == 'refund' ? 'refund' : 'sale';
-                            $item->discount_id = isset($item_post['discount']) && $item_post['discount'] ? intval($item_post['discount']) : 0;
-                            $item->quantity = isset($item_post['qty']) && $item_post['qty'] ? intval($item_post['qty']) : 1;
+            $user_id = Request::Re_Check('user-id') ? FilterInput::Int(Request::Post('user-id')) : 0;
 
-                            $item_details = ItemsModel::getItemInventoryPricingTaxDetails($item->item_id);
-                            if ($item_details) {
-                                $item->tax_id = $item_details->tax_class;
-                                $item->inventory_id = $item_details->item_inventory_id;
-                                $item->pricing_id = $item_details->item_pricing_id;
 
-                                // calc item's price based on the pricing level (if any, else use the RRP price)
-                                $item->original_price = $item_details->rrp_price;
-                                if ($sale->pricing_level && $sale->pricing_level !== '0') {
-                                    $pricing_level = Pricing_levelsModel::getOne($sale->pricing_level);
-                                    if ($pricing_level) {
-                                        $level_rate = strtolower($pricing_level->teir) == "teir 2" ? ($item_details->rrp_percentage / 2) : $pricing_level->rate;
-                                        $item->original_price = substr((($level_rate / 100) * $item_details->buy_price), 0, 5) + $item_details->buy_price;
-                                    } else {
-                                        // log that pricing level not found so used the rrp price
-                                        $this->logger->info("Couldn't find pricing level while adding sale items, used RRP Price instead.", Helper::AppendLoggedin(['Sale UID' => $sale->uid]));
-                                    }
+            if (isset($_POST['items']) && !empty($_POST['items'])) {
+                $items = array();
+                $subtotal = $total = $sale_discount = $tax = 0;
+                foreach ($_POST['items'] as $item_post) {
+                    if (isset($item_post['id']) && !empty($item_post['id'])) {
+                        $item = new \stdClass();
+                        $item->sale_item_id = isset($item_post['sale_item_id']) && $item_post['sale_item_id'] ? $item_post['sale_item_id'] : 0;
+                        $item->invoice_line_id = isset($item_post['invoice_line_id']) && $item_post['invoice_line_id'] ? $item_post['invoice_line_id'] : 0;
+                        $item->item_id = $item_post['id'];
+                        $item->item_type = $item_post['type'] == 'refund' ? 'refund' : 'sale';
+                        $item->discount_id = isset($item_post['discount']) && $item_post['discount'] ? intval($item_post['discount']) : 0;
+                        $item->quantity = isset($item_post['qty']) && $item_post['qty'] ? intval($item_post['qty']) : 1;
+
+                        $item_details = ItemsModel::getItemInventoryPricingTaxDetails($item->item_id);
+                        if ($item_details) {
+                            $item->item = $item_details->item;
+                            $item->tax_id = $item_details->tax_class;
+                            $item->inventory_id = $item_details->item_inventory_id;
+
+                            // calc item's price based on the pricing level (if any, else use the RRP price)
+                            $item->original_price = $item_details->rrp_price;
+                            if ($sale->pricing_level && $sale->pricing_level != 0) {
+                                $pricing_level = Pricing_levelsModel::getOne($sale->pricing_level);
+                                if ($pricing_level) {
+                                    $level_rate = strtolower($pricing_level->teir) == "teir 2" ? ($item_details->rrp_percentage / 2) : $pricing_level->rate;
+                                    $item->original_price = substr((($level_rate / 100) * $item_details->buy_price), 0, 5) + $item_details->buy_price;
+                                } else {
+                                    // log that pricing level not found so used the rrp price
+                                    $this->logger->info("Couldn't find pricing level while adding sale items, used RRP Price instead.", Helper::AppendLoggedin(['Sale UID' => $sale->uid]));
                                 }
+                            }
 
-                                // calc item's discount (if any, else use the original price as price)
-                                $item->price = $item->item_type == 'refund' ? '-'.$item->original_price : $item->original_price;
-                                if ($item->discount_id !== 0) {
-                                    $discount_details = DiscountsModel::getOne($item->discount_id);
-                                    if ($discount_details) {
-                                        $item->discount = $discount_details->type == 'fixed' ?
-                                            $discount_details->discount :
-                                            ($item->original_price * $discount_details->discount) / 100;
-                                        $item->price = $item->item_type == 'refund' ? '-'.($item->original_price - $item->discount) : $item->original_price - $item->discount;
-                                    }
+                            // calc item's discount (if any, else use the original price as price)
+                            $item->price = $item->item_type == 'refund' ? '-'.$item->original_price : $item->original_price;
+                            if ($item->discount_id !== 0) {
+                                $discount_details = DiscountsModel::getOne($item->discount_id);
+                                if ($discount_details) {
+                                    $item->discount = $discount_details->type == 'fixed'
+                                        ? $discount_details->discount
+                                        : ($item->original_price * $discount_details->discount) / 100;
+                                    $item->price = $item->item_type == 'refund' ? '-'.($item->original_price - $item->discount) : $item->original_price - $item->discount;
                                 }
-
-                                $item->total = $item->price * abs($item->quantity);
-                                $subtotal += $item->original_price * $item->quantity;
-                                $total += $item->price * $item->quantity;
-                                $sale_discount += isset($item->discount) ? $item->discount * $item->quantity : 0;
-                                $tax += ($item->price * $item->quantity) * $item_details->rate / 100;
                             }
 
-                            array_push($items, $item);
+                            $item->total = $item->price * abs($item->quantity);
+                            $item->tax = ($item->price * abs($item->quantity)) * $item_details->rate / 100;
+
+                            $sale_discount += isset($item->discount) ? $item->discount * $item->quantity : 0;
+                            $tax += $item->tax;
+                            $subtotal += $item->original_price * $item->quantity;
+                            $total += $item->price * $item->quantity;
                         }
+
+                        array_push($items, $item);
                     }
-
-                    $sale->subtotal = $subtotal;
-                    $sale->discount = $sale_discount;
-                    $sale->total = $total;
-                    $sale->tax = $tax;
-
-                    if (Request::Check('payment')) {
-                        $sale->sale_type = 'sale';
-                    } elseif (Request::Check('quote')) {
-                        $sale->sale_type = 'quote';
-                    } elseif (Request::Check('cancel')) {
-                        $sale->sale_type = 'cancel';
-                    }
-
-                    if ($sale->Save()) {
-                        foreach ($items as $std_item) {
-                            $sale_item = new Sales_itemsModel();
-                            if ($std_item->sale_item_id && $std_item->sale_item_id !== 0) {
-                                $sale_item->id = $std_item->sale_item_id;
-                                unset($std_item->sale_item_id);
-                            }
-
-                            $sale_item->sale_id = $sale->id;
-
-                            foreach (get_object_vars($std_item) as $key => $value) {
-                                $sale_item->$key = $value;
-                            }
-
-                            if (!$sale_item->Save()) {
-                                $this->logger->error("Sale was updated, but some items weren't saved!", Helper::AppendLoggedin(['Sale ID' => $sale->id, 'Item ID' => $std_item->item_id]));
-                            }
-                        }
-
-                        $this->logger->info("Sale was updated successfully.", Helper::AppendLoggedin(['Sale ID' => $sale->id]));
-                        if ($sale->customer_id) {
-                            LoggerModel::Instance($sale->customer_id, 'customers')
-                                ->InitializeLogger()
-                                ->info("Customer's sale was updated.", Helper::AppendLoggedin(['Sale ID' => $sale->id]));
-                        }
-
-                        if ($sale->sale_type == 'sale') {
-                            Redirect::To('pos/sale_payment/' . $sale->id);
-                        } else {
-                            Redirect::To('pos/sale_actions');
-                        }
-                    } else {
-                        $this->logger->error("Failed to update sale. General saving error!", Helper::AppendLoggedin([]));
-                        Helper::SetFeedback('error', "Failed to save sale. Something went wrong!");
-                    }
-                } else {
-                    $this->logger->error("Failed to update sale. No items selected!", Helper::AppendLoggedin([]));
-                    Helper::SetFeedback('error', "Failed to save sale. No items were selected!");
                 }
 
-            }
+                $sale->subtotal = $subtotal;
+                $sale->discount = $sale_discount;
+                $sale->total = $total;
+                $sale->tax = $tax;
 
-            $this->RenderPos([
-                'sale' => SalesModel::getSale("WHERE sales.id = '$id'", true),
-                'sale_items' => Sales_itemsModel::getSaleItems($id),
-                'pricing_levels' => Pricing_levelsModel::getAll(),
-                'discounts' => DiscountsModel::getAll()
-            ]);
-        }
-    }
+                if (Request::Check('payment')) {
+                    $sale->sale_type = 'sale';
+                } elseif (Request::Check('quote')) {
+                    $sale->sale_type = 'quote';
+                } elseif (Request::Check('cancel')) {
+                    $sale->sale_type = 'cancel';
+                }
 
-    public function Sale_paymentAction()
-    {
-        $id = ($this->_params) != null ? $this->_params[0] : false;
-        if ($id !== false) {
-            $sale = SalesModel::getSale("WHERE sales.id = '$id'", true);
-            $sale_paid_amount = Sales_paymentsModel::getSalePaidAmount($id);
-            $payments_from_before = $sale_paid_amount->total_paid ?: 0;
+                if ($sale->Save()) {
+                    // update sale's invoice.
+                    $existing_invoice = SalesModel::getSaleInvoiceID($id);
 
-            if (!empty($_POST)) {
-                if (isset($_POST['payments']) && !empty($_POST['payments'])) {
-                    $total_payments = array_sum($_POST['payments']);
+                    $invoice = new InvoicesModel();
+                    if ($existing_invoice) {
+                        $invoice->id = $existing_invoice->invoice_id;
+                    } else {
+                        $invoice->reference = InvoicesModel::NextID("LPAD(MAX(auto_increment),5,'0')");
+                    }
 
-                    foreach ($_POST['payments'] as $method => $amount) {
-                        if ($amount > 0) {
-                            $sale_payment = new Sales_paymentsModel();
-                            $sale_payment->sale_id = $id;
-                            $sale_payment->payment_method = $method;
-                            $sale_payment->amount = FilterInput::Float($amount);
-                            $sale_payment->created_by = Session::Get('loggedin')->id;
-                            if (!$sale_payment->Save()) {
-                                $this->logger->error("Some sale payments weren't saved!", Helper::AppendLoggedin(['Sale ID' => $id, 'Payment Method' => $method, 'Amount' => $amount]));
+                    $invoice->customer_id = $sale->customer_id ?: 0;
+
+                    $invoice->subtotal = $sale->subtotal;
+                    $invoice->discount = $sale->discount;
+                    $invoice->tax = $sale->tax;
+                    $invoice->total = $sale->total;
+                    $invoice->amount_due = $sale->total;
+                    $invoice->status = 'unpaid';
+                    if ($invoice->Save()) {
+                        if (!$existing_invoice) {
+                            $invoices_orders = new Invoices_ordersModel();
+                            $invoices_orders->invoice_id = $invoice->id;
+                            $invoices_orders->order_id = $sale->id;
+                            $invoices_orders->type = 'sale';
+                            if (!$invoices_orders->Save()) {
+                                $this->logger->error("Failed to create sale - invoice link. Must be corrected manually.", Helper::AppendLoggedin(['Sale' => $sale->uid, 'Invoice ID' => $invoice->id]));
                             }
+                        }
+                    } else {
+                        $this->logger->error("Failed to create sale's invoice. Must be corrected manually.", Helper::AppendLoggedin(['Sale' => $sale->uid]));
+                        Helper::SetFeedback('error', "Failed to create sale's invoice. Must be corrected manually.");
+                    }
+
+                    foreach ($items as $std_item) {
+                        $sale_item = new Sales_itemsModel();
+                        $invoice_line = new Invoice_linesModel();
+
+                        if ($std_item->sale_item_id && $std_item->sale_item_id !== 0) {
+                            $sale_item->id = $std_item->sale_item_id;
+                            unset($std_item->sale_item_id);
+                        }
+                        if ($std_item->invoice_line_id && $std_item->invoice_line_id !== 0) {
+                            $invoice_line->id = $std_item->invoice_line_id;
+                            unset($std_item->invoice_line_id);
+                        }
+
+                        // sale lines
+                        $sale_item->sale_id = $sale->id;
+                        foreach (get_object_vars($std_item) as $key => $value) {
+                            $sale_item->$key = $value;
+                        }
+
+                        if (!$sale_item->Save()) {
+                            $this->logger->error("Sale was updated, but some items weren't saved!", Helper::AppendLoggedin(['Sale ID' => $sale->id, 'Item ID' => $std_item->item_id]));
+                        }
+
+                        // invoice lines
+                        $invoice_line->invoice_id = $invoice->id;
+                        $invoice_line->product_id = $std_item->item_id;
+                        $invoice_line->tax_id = $std_item->tax_id;
+                        $invoice_line->product_name = $std_item->item;
+                        $invoice_line->quantity = $std_item->quantity;
+                        $invoice_line->unit_price = $std_item->original_price;
+                        $invoice_line->discount = $std_item->discount;
+                        $invoice_line->tax = $std_item->tax;
+                        $invoice_line->total = $std_item->total;
+                        if (!$invoice_line->Save()) {
+                            $this->logger->error("Sale's invoice was saved, but some items weren't saved!", Helper::AppendLoggedin(['Sale UID' => $sale->uid, 'Item ID' => $std_item->item_id]));
+                            Helper::SetFeedback('error', "Sale's invoice was saved, but some items weren't saved!");
                         }
                     }
 
-                    $sale_update = new SalesModel();
-                    $sale_update->id = $id;
-
-                    if (($total_payments + $payments_from_before) >= $sale->total) {
-                        $sale_update->sale_status = 'paid';
-                    } elseif ($total_payments + $payments_from_before != 0) {
-                        $sale_update->sale_status = 'partial_payment';
-                    } elseif ($total_payments + $payments_from_before == 0) {
-                        $sale_update->sale_status = 'awaiting_payment';
+                    $this->logger->info("Sale was updated successfully.", Helper::AppendLoggedin(['Sale ID' => $sale->id]));
+                    if ($sale->customer_id) {
+                        LoggerModel::Instance($user_id, 'customers')
+                            ->InitializeLogger()
+                            ->info("Customer's sale was updated.", Helper::AppendLoggedin(['Sale ID' => $sale->id]));
                     }
 
-                    if ($sale_update->Save()) {
-                        $sale_items = Sales_itemsModel::getSaleItems_inventory($id);
-                        if ($sale_items) {
-                            foreach ($sale_items as $sale_item) {
+                    if ($sale->sale_type == 'sale') {
+                        Redirect::To('pos/sale_payment/' . $sale->id);
+                    } else {
+                        Redirect::To('pos/sale_actions');
+                    }
+                } else {
+                    $this->logger->error("Failed to update sale. General saving error!", Helper::AppendLoggedin([]));
+                    Helper::SetFeedback('error', "Failed to save sale. Something went wrong!");
+                }
+            } else {
+                $this->logger->error("Failed to update sale. No items selected!", Helper::AppendLoggedin([]));
+                Helper::SetFeedback('error', "Failed to save sale. No items were selected!");
+            }
+
+        }
+
+        $this->RenderPos([
+            'sale' => SalesModel::getSale("WHERE sales.id = '$id'", true),
+            'sale_items' => Sales_itemsModel::getSaleItems_invoiceLines("WHERE sales_items.sale_id = '$id'"),
+            'pricing_levels' => Pricing_levelsModel::getAll(),
+            'discounts' => DiscountsModel::getAll()
+        ]);
+    }
+
+    public function Sale_paymentAction($id)
+    {
+        $sale = SalesModel::getSale__salePayment("WHERE sales.id = '$id'", true);
+
+        if (!empty($_POST)) {
+            if (isset($_POST['payments']) && !empty($_POST['payments'])) {
+                $total_payments = array_sum($_POST['payments']);
+                $invoice_id = SalesModel::getSaleInvoiceID($id)->invoice_id;
+
+                foreach ($_POST['payments'] as $method => $amount) {
+                    if ($amount > 0) {
+                        $sale_payment = new Sales_paymentsModel();
+                        $sale_payment->sale_id = $id;
+                        $sale_payment->payment_method = $method;
+                        $sale_payment->amount = FilterInput::Float($amount);
+                        $sale_payment->created_by = Session::Get('loggedin')->id;
+
+
+                        $invoice_payment = new Invoices_paymentsModel();
+                        $invoice_payment->invoice_id = $invoice_id;
+                        $invoice_payment->payment_method = $method;
+                        $invoice_payment->amount = FilterInput::Float($amount);
+
+                        if (!$sale_payment->Save()) {
+                            $this->logger->error("Some sale payments weren't saved!", Helper::AppendLoggedin(['Sale ID' => $id, 'Payment Method' => $method, 'Amount' => $amount]));
+                        }
+                        if (!$invoice_payment->Save()) {
+                            $this->logger->error("Some invoice payments weren't saved!", Helper::AppendLoggedin(['Invoice ID' => $invoice_id, 'Payment Method' => $method, 'Amount' => $amount]));
+                        }
+                    }
+                }
+
+                $sale_update = new SalesModel();
+                $sale_update->id = $id;
+
+                if (($total_payments + $sale->total_paid) >= $sale->total) {
+                    $sale_update->sale_status = 'paid';
+                } elseif ($total_payments + $sale->total_paid != 0) {
+                    $sale_update->sale_status = 'partial_payment';
+                } elseif ($total_payments + $sale->total_paid == 0) {
+                    $sale_update->sale_status = 'awaiting_payment';
+                }
+
+                if ($sale_update->Save()) {
+                    // update invoice
+                    $invoice = new InvoicesModel();
+                    $invoice->id = $invoice_id;
+                    $invoice->amount_paid = $total_payments + $sale->total_paid;
+                    $invoice->amount_due = $sale->total - $invoice->amount_paid > 0 ? $sale->total - $invoice->amount_paid : 0;
+                    if ($sale->total == $invoice->amount_due) {
+                        $invoice->status = 'unpaid';
+                    } elseif ($invoice->amount_due == 0) {
+                        $invoice->status = 'paid';
+                    } elseif ($sale->total > $invoice->amount_due) {
+                        $invoice->status = 'semi-paid';
+                    }
+
+                    if (!$invoice->Save()) {
+                        $this->logger->error("Payments were saved, But failed to update sale's invoice..", Helper::AppendLoggedin(['Sale ID' => $id]));
+                    }
+
+
+
+                    $sale_items = Sales_itemsModel::getSaleItems_inventory($id);
+                    if ($sale_items) {
+                        foreach ($sale_items as $sale_item) {
+                            if ($sale_item->inventory_id) {
                                 $inventory = new Items_inventoryModel();
                                 $inventory->id = $sale_item->inventory_id;
                                 $inventory->qoh = $sale_item->qoh - $sale_item->quantity;
@@ -2148,36 +2401,35 @@ class PosController extends AbstractController
                                 }
                             }
                         }
-
-
-                        $this->logger->info("Sale payment update. payment status: ".str_replace('_', ' ', $sale_update->sale_status), Helper::AppendLoggedin(['Sale ID' => $id, 'Amount' => $total_payments]));
-                        if ($sale->customer_id) {
-                            LoggerModel::Instance($sale->customer_id, 'customers')
-                                ->InitializeLogger()
-                                ->info("Sale payment update. payment status: ".str_replace('_', ' ', $sale_update->sale_status), Helper::AppendLoggedin(['Sale ID' => $id, 'Amount' => $total_payments]));
-                        }
-
-                        Redirect::To('pos/sale_actions/' . $id);
-                    } else {
-                        $this->logger->error("Payments were saved, But failed to mark sale as paid.", Helper::AppendLoggedin(['Sale ID' => $id]));
-                        Helper::SetFeedback('error', "Payments were saved, But failed to mark sale as paid.");
                     }
-                } else {
-                    $this->logger->error("Failed to save sale payments. No payments were submitted!", Helper::AppendLoggedin(['Sale ID' => $id]));
-                    Helper::SetFeedback('error', "Failed to save sale payments. No payments were submitted!");
-                }
-            }
 
-            if ($sale) {
-                $customer = $sale->customer_id ? CustomersModel::getCustomers("WHERE users.id = '$sale->customer_id'", true) : false;
-                $this->RenderPos([
-                    'sale' => $sale,
-                    'sale_paid_amount' => $sale_paid_amount,
-                    'sale_items' => Sales_itemsModel::getSaleItems($id),
-                    'customer' => $customer,
-                    'payment_methods' => Payment_methodsModel::getAll()
-                ]);
+
+                    $this->logger->info("Sale payment update. payment status: ".str_replace('_', ' ', $sale_update->sale_status), Helper::AppendLoggedin(['Sale ID' => $id, 'Amount' => $total_payments]));
+                    if ($sale->customer_id) {
+                        LoggerModel::Instance($sale->customer_id, 'customers')
+                            ->InitializeLogger()
+                            ->info("Sale payment update. payment status: ".str_replace('_', ' ', $sale_update->sale_status), Helper::AppendLoggedin(['Sale ID' => $id, 'Amount' => $total_payments]));
+                    }
+
+                    Redirect::To('pos/sale_actions/' . $id);
+                } else {
+                    $this->logger->error("Payments were saved, But failed to mark sale as paid.", Helper::AppendLoggedin(['Sale ID' => $id]));
+                    Helper::SetFeedback('error', "Payments were saved, But failed to mark sale as paid.");
+                }
+            } else {
+                $this->logger->error("Failed to save sale payments. No payments were submitted!", Helper::AppendLoggedin(['Sale ID' => $id]));
+                Helper::SetFeedback('error', "Failed to save sale payments. No payments were submitted!");
             }
+        }
+
+        if ($sale) {
+            $customer = $sale->customer_id ? CustomersModel::getCustomers("WHERE users.id = '$sale->customer_id'", true) : false;
+            $this->RenderPos([
+                'sale' => $sale,
+                'sale_items' => Sales_itemsModel::getSaleItems($id),
+                'customer' => $customer,
+                'payment_methods' => Payment_methodsModel::getAll()
+            ]);
         }
     }
 
@@ -2256,6 +2508,7 @@ class PosController extends AbstractController
     }
 
 
+    /* Quotes */
     public function QuotesAction()
     {
         $status_filter = Request::Check('status', 'get') ? Request::Get('status') : false;
@@ -2525,5 +2778,74 @@ class PosController extends AbstractController
 
 
 
+/* Invoices */
+    public function InvoicesAction()
+    {
+        $status = Request::Check('status', 'get') ? Request::Get('status') : false;
+        $where = $status ? "WHERE invoices.status = '$status'" : '';
 
+        $this->RenderPos([
+            'invoices' => (new InvoicesModel)->getAllInvoicesWithCustomer($where)->paginate()
+        ]);
+    }
+
+    public function InvoiceAction($id)
+    {
+        $this->RenderPos([
+            'invoice' => (new InvoicesModel)->getAllInvoicesWithCustomer()->fetchAll("WHERE invoices.id = '$id'", true),
+            'invoice_lines' => (new Invoice_linesModel)->getInvoiceLineWithItem($id)->fetchAll()
+        ]);
+    }
+
+    public function Invoice_receiptAction($id)
+    {
+        $invoice = (new InvoicesModel)->getAllInvoicesWithCustomer()->fetchAll("WHERE invoices.id = '$id'", true);
+        $invoice_lines = (new Invoice_linesModel)->getInvoiceLineWithItem($id)->fetchAll();
+
+        $variables = array();
+        $variables['IMAGEPATH'] = EMAIL_IMAGES_DIR;
+        $variables['CUSTOMER_NAME'] = $invoice->firstName.' '.$invoice->lastName;
+        $variables['ADDRESS'] = $invoice->address.'<br>'.$invoice->suburb.' '.$invoice->zip;
+        $variables['INVOICE_NUMBER'] = $invoice->id;
+        $variables['INVOICE_REFERENCE'] = $invoice->reference;
+        $variables['DATE'] = (new \DateTime($invoice->created))->format('D, d M Y');
+
+        if ($invoice_lines) {
+            $lines = '';
+            foreach ($invoice_lines as $invoice_line) {
+                $lines .= '<tr class="ods-line-item--small-screen-divider">
+                                <td class="xui-text-align-left">'.$invoice_line->product_name.'</td>
+                                <td class="xui-text-align-right ods-hide-when-small">'.$invoice_line->quantity.'</td>
+                                <td class="xui-text-align-right ods-hide-when-small">'.number_format($invoice_line->unit_price, 2).'</td>
+                                <td class="xui-text-align-right ods-hide-when-small">'.number_format($invoice_line->discount, 2).'</td>
+                                <td class="xui-text-align-right ods-hide-when-small">'.($invoice_line->rate ? : '0').'%</td>
+                                <td class="xui-text-align-right"><strong>'.number_format($invoice_line->total, 2).'</strong></td>
+                            </tr>
+                            <tr class="ods-hide-when-large">
+                                <td colspan="2" class="ods-line-item--small-screen">'.$invoice_line->quantity.' x '.number_format($invoice_line->unit_price, 2).'</td>
+                            </tr>
+                            <tr class="ods-hide-when-large">
+                                <td colspan="2" class="ods-line-item--small-screen">Discount: '.number_format($invoice_line->discount, 2).'</td>
+                            </tr>
+                            <tr class="ods-hide-when-large">
+                                <td colspan="2" class="ods-line-item--small-screen">GST: '.($invoice_line->rate ? : '0').'%</td>
+                            </tr>';
+            }
+
+            $variables['INVOICE_LINES'] = $lines;
+        }
+
+        $variables['SUBTOTAL'] = floatval($invoice->total) - floatval($invoice->tax);
+        $variables['DISCOUNT'] = $invoice->discount > 0 ? '(includes a discount of '.number_format($invoice->discount, 2).')' : '';
+        $variables['TAX'] = $invoice->tax;
+        $variables['AMOUNT_DUE'] = number_format($invoice->amount_due, 2);
+
+        echo Helper::GenerateTemplate('invoice-pdf-template', $variables);
+    }
+
+    public function testAction()
+    {
+        $accounts_update_results = ['successful' => ['ss', 'sd'], 'failed' => []];
+        var_dump(empty($accounts_update_results['failed']));
+    }
 }

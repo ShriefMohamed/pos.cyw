@@ -209,7 +209,7 @@ $(document).ready(function () {
             success: function (data) {
                 if (data !== false) {
                     if (refund == false) {
-                        if (data.available_stock == null || parseInt(data.available_stock) <=0) {
+                        if (data.is_tracked_as_inventory == 1 && data.available_stock == null || parseInt(data.available_stock) <=0) {
                             showFeedback('error', "Sorry selected item has no stock!");
                             return;
                         }
@@ -239,6 +239,7 @@ $(document).ready(function () {
     });
     $('#customerRemoveButton').on('click', function (e) {
         $('.register-customer #customer-id-holder').val('');
+        $('.register-customer #user-customer-id-holder').val('');
         $('.register-customer #customerInfo').html("No Customer Selected");
 
         $('.register-customer .search').css({'display':'inline-block'});
@@ -387,11 +388,14 @@ $(document).ready(function () {
                 $(this).val(-1);
             }
         } else {
-            var $stock = $(this).closest('tr').data('item-stock');
-            $stock = $stock ? parseInt($stock) : 0;
-            if ($(this).val() > $stock) {
-                $(this).val($stock);
-                showFeedback('error', "Selected item's stock is <strong>"+$stock+"</strong>.");
+            var $track_inventory = $(this).closest('tr').data('track-inventory');
+            if ($track_inventory == 1) {
+                var $stock = $(this).closest('tr').data('item-stock');
+                $stock = $stock ? parseInt($stock) : 0;
+                if ($(this).val() > $stock) {
+                    $(this).val($stock);
+                    showFeedback('error', "Selected item's stock is <strong>"+$stock+"</strong>.");
+                }
             }
 
             if ($(this).val() < 1) {
@@ -448,6 +452,29 @@ $(document).ready(function () {
         UpdateTotal();
     });
 
+    $(document).on('click', '.remove-item-row-ajax', function (e) {
+        var $item_row = $(this).closest('.item-row');
+        var $sale_item_id = $item_row.data('sale-item-id');
+
+        $.ajax({
+            type: "POST",
+            url: "/ajax/sale_remove_item/" + $sale_item_id,
+            dataType: 'json',
+            beforeSend: function () {
+                Pace.restart();
+            },
+            success: function (data) {
+                $item_row.remove();
+                if ($('#register_transaction .item-row').length == 0) {
+                    $('#deleteAllButton').addClass('hidden');
+                }
+                UpdateTotal();
+            },
+            fail: function (err) {
+                showFeedback('error', err.responseText);
+            }
+        });
+    });
 
     $('#deleteAllButton').on('click', function (e) {
         if (confirm("Are you sure you want to delete all lines from this sale?")) {
@@ -618,7 +645,7 @@ function ApplyDiscount() {
                 var html = "<div id=\"discountDescription\" class=\"discount\" data-discount='"+discount+"'> Discount:" +
                     "   <span> "+title+" </span>" +
                     "   <span class='item-displayed-discount'>-$"+ (discount * item_qty) +"</span>" +
-                    "   <input type='hidden' name='items["+item_id+"][discount]' value='"+discount_id+"'>"
+                    "   <input type='hidden' name='items[s"+item_id+"][discount]' value='"+discount_id+"'>"
                 "</div>";
                 $(items[i]).find('.display_item_name').append(html);
             } else {
@@ -640,8 +667,8 @@ function UpdateTotal() {
     var tmp_tax = parseFloat('0.00'), tmp_sub_total = parseFloat('0.00'), tmp_total = parseFloat('0.00'), tmp_discount = parseFloat('0.00');
     for (var i = 0; i < items.length; i++) {
         var price = parseFloat($(items[i]).find('.display_price').data('price')),
-            qty = parseInt($(items[i]).find('.display_quantity').val().replace('-', '')),
-            tax_rate = parseFloat($(items[i]).find('.display_tax').data('tax')),
+            qty = $(items[i]).find('.display_quantity').val() ? parseInt($(items[i]).find('.display_quantity').val().replace('-', '')) : 1,
+            tax_rate = $(items[i]).find('.display_tax').data('tax') ? parseFloat($(items[i]).find('.display_tax').data('tax')) : 0,
             item_sub_total = $(items[i]).find('.display_subtotal');
 
         var discounted_price = price;
@@ -683,7 +710,7 @@ function AddItemToSale(data, qty, refund = 0) {
     var inputs_name_add = refund ? 'r' : 's';
     var $item_row = refund ?
         "<tr class=\"item-row item-"+data.item_o_id+" refund-item-"+data.item_o_id+" refund \" data-item-id='"+data.item_o_id+"'>\n" :
-        "<tr class=\"item-row item-"+data.item_o_id+" sale-item-"+data.item_o_id+"\" data-item-id='"+data.item_o_id+"' data-item-stock='"+data.available_stock+"'>\n";
+        "<tr class=\"item-row item-"+data.item_o_id+" sale-item-"+data.item_o_id+"\" data-item-id='"+data.item_o_id+"' data-item-stock='"+data.available_stock+"' data-track-inventory='"+data.is_tracked_as_inventory+"'>\n";
 
     $item_row +=
         "    <input type=\"hidden\" name=\"items["+inputs_name_add+data.item_o_id+"][id]\" value='"+data.item_o_id+"'>\n";
@@ -695,7 +722,7 @@ function AddItemToSale(data, qty, refund = 0) {
         "        <a href=\"#\" class=\"control remove-item-row\"><i class=\"fa fa-trash\"></i></a>\n" +
         "    </td>\n" +
         "    <td class=\"register-lines-control display_item_name\">\n" +
-        "        <a href=\"/pos/item/"+data.item_o_id+"\"><span>"+data.item+"</span></a>\n" +
+        "        <a href=\"/pos/item/"+data.item_o_id+"\" target='_blank'><span>"+data.item+"</span></a>\n" +
         "    </td>\n";
     $item_row += "    <td class=\"money\">$"+data.buy_price+"</td>\n";
     $item_row += refund ?
@@ -711,7 +738,7 @@ function AddItemToSale(data, qty, refund = 0) {
 
     if (data.tax_class == '0') {
         $item_row +=
-            "<td>None</td>\n";
+            "<td class='display_tax' data-tax='0'>None</td>\n";
     } else {
         $item_row +=
             "<td class='display_tax' data-tax='"+data.rate+"'>"+data.class+' ('+data.rate+'%)'+"</td>\n";
@@ -783,8 +810,17 @@ $(document).ready(function () {
 });
 /*End Quotes*/
 
-/*Item Add*/
+/*Item*/
 $(document).ready(function () {
+    // On track inventory change
+    $('#view_function__IsTrackedAsInventory').on('change', function (e) {
+        if ($(this).is(":checked")) {
+            $('#view_add_quantity').attr('disabled', false);
+        } else {
+            $('#view_add_quantity').attr('disabled', true);
+        }
+    });
+
     // On DBP change
     $('#view_default_cost').on('input', function (e) {
         if (parseInt($('#view_default_cost').val())) {
@@ -867,8 +903,22 @@ $(document).ready(function () {
             $('#view_function__reorder_lvl').attr('disabled', true);
         }
     });
+
+
+
+    $('.item-view_update-view .nav-item .nav-link').on('click', function (e) {
+        e.preventDefault();
+        if (this.hash != '#tabs-menu-details-link') {
+            $('#saveButton').css({'display': 'none'});
+        } else {
+            $('#saveButton').css({'display': 'inline-block'});
+        }
+    });
+    $('.item-view_update-view #saveButton').on('click', function (e) {
+        $('.update-item-form').submit();
+    });
 });
-/*End Item Add*/
+/*End Item*/
 
 
 
@@ -1107,10 +1157,11 @@ $(document).ready(function () {
     $(document).on('click', '.associate-purchase-order-btn', function (e) {
         e.preventDefault();
         var $item_id = $(this).data('item-id');
+        var $is_vr = $(this).parents('td').data('type') ? true : false;
         $.ajax({
             type: "POST",
-            url: "/ajax/get_items_purchase_orders",
-            data: {id: $item_id},
+            url: "/ajax/get_items_purchase_orders/"+$item_id,
+            data: {},
             dataType: 'json',
             beforeSend: function () {
                 Pace.restart();
@@ -1139,7 +1190,7 @@ $(document).ready(function () {
                         for (var i = 0; i < data.length; i++) {
                             $html += "       <tr class=\"gradeX\">\n" +
                                 "                <td>\n" +
-                                "                    <button title=\"Add\" type='button' class='btn add-purchase-order-vendor_return' data-order-id='"+data[i].order_id+"' data-po-item-id='"+data[i].id+"' data-item-id='"+$item_id+"'><i class=\"fa fa-plus \"></i> Select</button>\n" +
+                                "                    <button title=\"Add\" type='button' class='btn add-purchase-order-vendor_return' data-order-id='"+data[i].order_id+"' data-po-item-id='"+data[i].id+"' data-item-id='"+$item_id+"' data-type='"+($is_vr ? 'vr' : 'i')+"'><i class=\"fa fa-plus \"></i> Select</button>\n" +
                                 "                </td>\n" +
                                 "                <td>\n" +
                                 "                    <a title=\"Edit Purchase Order\" target=\"_blank\" href=\"/pos/purchase_order/"+data[i].order_id+"\"><span>#"+data[i].order_id+"</span></a>\n" +
@@ -1185,14 +1236,16 @@ $(document).ready(function () {
         var $order_id = $(this).data('order-id');
         var $po_item_id = $(this).data('po-item-id');
         var $item_id = $(this).data('item-id');
-        var $html = "<div class='dropright'>\n" +
-            " <div role=\"button\" class=\"css-153ki3p ertzig70 dropdown-toggle\" id='dropdown-btn-"+$item_id+"' data-toggle=\"dropdown\" aria-haspopup=\"true\">" +
+        var $is_vr = $(this).data('type') && $(this).data('type') == 'vr' ? true : false;
+
+        var $html = "<div class='dropright' style=\"width: 2rem;cursor: pointer;\">\n" +
+            " <div role=\"button\" class=\"ertzig70 dropdown-toggle\" id='dropdown-btn-"+$item_id+"' data-toggle=\"dropdown\" aria-haspopup=\"true\">" +
             ""+$order_id+
-            "<input type='hidden' name='items["+$item_id+"][purchase_order_item_id]' value='"+$po_item_id+"'>" +
+            "<input type='hidden' name='"+($is_vr ? 'vr-items' : 'items')+"["+$item_id+"][purchase_order_item_id]' value='"+$po_item_id+"'>" +
             "</div>\n" +
             " <div class=\"dropdown-menu\" aria-labelledby=\"dropdown-btn-"+$item_id+"\">\n" +
             "    <a class=\"dropdown-item\" target='_blank' href=\"/pos/purchase_order/"+$order_id+"\"><i class='fa fa-edit'></i> View PO</a>\n" +
-            "    <a class=\"dropdown-item associate-purchase-order-btn\" href=\"#\" data-item-id='"+$item_id+"'><i class='fa redo-alt'></i> Select other PO</a>\n" +
+            "    <a class=\"dropdown-item associate-purchase-order-btn\" href=\"#\" data-item-id='"+$item_id+"'><i class='fa fa-redo-alt'></i> Select other PO</a>\n" +
             "    <a class=\"dropdown-item disassociate-purchase-order-btn\" href=\"#\" data-item-id='"+$item_id+"'><i class='fa fa-trash'></i> Remove PO</a>\n" +
             "  </div>\n" +
             "  </div>";
