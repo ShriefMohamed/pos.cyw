@@ -35,7 +35,7 @@
             <div class="top-bar-item top-bar-item-full">
                 <!-- .top-bar-search -->
                 <div class="top-bar-search">
-                    <form method="post" action="<?= HOST_NAME ?>ajax/search">
+                    <form method="get" action="<?= HOST_NAME ?>admin/search">
                         <div class="input-group input-group-search">
                             <div class="input-group-prepend">
                                 <span class="input-group-text"><span class="oi oi-magnifying-glass"></span></span>

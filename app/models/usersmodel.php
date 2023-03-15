@@ -80,16 +80,20 @@ class UsersModel extends AbstractModel
         return parent::getSQL($sql, '', true);
     }
 
-    public static function Search($query)
+
+    public function Search($key): UsersModel
     {
-        $sql = "SELECT * FROM users 
+        $this->_sql = "SELECT users.id, users.firstName, users.lastName, users.username, users.email, 
+                    users.phone, users.phone2, users.image, users.role,
+                    users.created, users.lastUpdate, users.lastSeen
+                FROM users 
                 WHERE 
-                    id LIKE '%$query%' ||
-                    firstName LIKE '%$query%' ||
-                    lastName LIKE '%$query%' ||
-                    username LIKE '%$query%' ||
-                    email LIKE '%$query%' ||
-                    phone LIKE '%$query%' ";
-        return parent::getSQL($sql);
+                    users.role != 'customer' &&
+                    (
+                      firstName LIKE '%$key%' || lastName LIKE '%$key%' || 
+                      username LIKE '%$key%' || email LIKE '%$key%' || 
+                      phone LIKE '%$key%' || phone2 LIKE '%$key%'
+                    )";
+        return $this;
     }
 }

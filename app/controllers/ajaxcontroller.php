@@ -11,6 +11,7 @@ use Framework\lib\Redirect;
 use Framework\lib\Request;
 use Framework\Lib\Session;
 use Framework\lib\SSP;
+use Framework\models\InvoicesModel;
 use Framework\models\licenses\Digital_licenses_assignModel;
 use Framework\models\licenses\Digital_licenses_templatesModel;
 use Framework\models\licenses\Digital_licensesModel;
@@ -201,6 +202,8 @@ class AjaxController extends AbstractController
         die(json_encode($response));
     }
 
+
+
     public function Item_deleteAction()
     {
         $id = ($this->_params) != null ? $this->_params[0] : false;
@@ -225,6 +228,8 @@ class AjaxController extends AbstractController
         die(json_encode($response));
     }
 
+
+    /* Ajax Delete Extension */
     public function Customer_deleteAction($id)
     {
         $item = CustomersModel::getCustomer($id);
@@ -245,6 +250,17 @@ class AjaxController extends AbstractController
         die(json_encode($response));
     }
 
+    private function Customer_delete($obj)
+    {
+        if ($obj) {
+            $customer = new CustomersModel();
+            if ($customer->Delete("user_id = '$obj->id'")) {
+                $this->logger->info("Customer was deleted", ['Customer: ' => $obj->firstName.' '.$obj->lastName]);
+            } else {
+                $this->logger->error("Failed to delete customer", ['Customer: ' => $obj->firstName.' '.$obj->lastName]);
+            }
+        }
+    }
 
     private function Digital_licenses_template_delete($obj)
     {
@@ -285,7 +301,7 @@ class AjaxController extends AbstractController
                 $options = " && items_inventory.vendor_id = '".FilterInput::Int(Request::Post('vendor_id'))."'";
             }
 
-            $data = ItemsModel::Search(FilterInput::String(Request::Post('key')), $options);
+            $data = ItemsModel::Instance()->Search(FilterInput::String(Request::Post('key')), $options)->exec();
             die(json_encode($data));
         }
     }
@@ -374,6 +390,7 @@ class AjaxController extends AbstractController
                 if ($customer->Save()) {
                     $result = $user;
                     $this->logger->info("New customer was created during sale.", Helper::AppendLoggedin(['Customer: ' => $user->firstName.' '.$user->lastName]));
+                    $this->UpdateCustomerKeywords($user->id, $customer->id);
                 } else {
                     $this->logger->error("Failed to create new customer during sale. Customer error.", Helper::AppendLoggedin(['Customer: ' => $user->firstName.' '.$user->lastName]));
                 }
@@ -1012,18 +1029,6 @@ class AjaxController extends AbstractController
 
 
 /* Global Functions*/
-    public function SearchAction()
-    {
-        $key = FilterInput::String(Request::Post('key'));
-        if ($key) {
-            // users, customers, admins
-            // pos stuff
-            // quotes
-            // invoices
-
-        }
-    }
-
     private function DeleteMethod($id, $object)
     {
         $object->id = $id;

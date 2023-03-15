@@ -217,14 +217,7 @@ class PosController extends AbstractController
                 $item_id = ItemsModel::getColumns(['id'], "id = '$item->id'", true);
 
                 // update item keywords
-                $get_item_keywords = ItemsModel::getItemKeywords($item_id);
-                $get_item_keywords = $get_item_keywords ? array_filter(array_shift($get_item_keywords), function($value) {return !is_null($value) && $value !== '';}) : [];
-                if ($get_item_keywords) {
-                    $item_keywords = new ItemsModel();
-                    $item_keywords->id = $item_id;
-                    $item_keywords->search_keywords = json_encode($get_item_keywords);
-                    $item_keywords->Save();
-                }
+                $this->UpdateItemKeywords($item_id);
 
 
                 // create xero accounts record
@@ -349,14 +342,7 @@ class PosController extends AbstractController
                 $item_id = ItemsModel::getColumns(['id'], "id = '$item->id'", true);
 
                 // update item keywords
-                $get_item_keywords = ItemsModel::getItemKeywords($item_id);
-                $get_item_keywords = $get_item_keywords ? array_filter(array_shift($get_item_keywords), function($value) {return !is_null($value) && $value !== '';}) : [];
-                if ($get_item_keywords) {
-                    $item_keywords = new ItemsModel();
-                    $item_keywords->id = $item_id;
-                    $item_keywords->search_keywords = json_encode($get_item_keywords);
-                    $item_keywords->Save();
-                }
+                $this->UpdateItemKeywords($item_id);
 
 
                 // create xero accounts record
@@ -510,14 +496,7 @@ class PosController extends AbstractController
                                         $item_id = ItemsModel::getColumns(['id'], "id = '$item->id'", true);
 
                                         // update item keywords
-                                        $get_item_keywords = ItemsModel::getItemKeywords($item_id);
-                                        $get_item_keywords = $get_item_keywords ? array_filter(array_shift($get_item_keywords), function($value) {return !is_null($value) && $value !== '';}) : [];
-                                        if ($get_item_keywords) {
-                                            $item_keywords = new ItemsModel();
-                                            $item_keywords->id = $item_id;
-                                            $item_keywords->search_keywords = json_encode($get_item_keywords);
-                                            $item_keywords->Save();
-                                        }
+                                        $this->UpdateItemKeywords($item_id);
 
                                         // create xero accounts record
                                         $item_xero_accounts = new Item_xero_accountsModel();
@@ -2016,6 +1995,9 @@ class PosController extends AbstractController
                         if (!$invoices_orders->Save()) {
                             $this->logger->error("Failed to create sale - invoice link. Must be corrected manually.", Helper::AppendLoggedin(['Sale' => $sale->uid, 'Invoice ID' => $invoice->id]));
                         }
+
+                        // update invoice keywords
+                        $this->UpdateInvoiceKeywords($invoice->id);
                     }
 
 
@@ -2241,6 +2223,9 @@ class PosController extends AbstractController
                                 $this->logger->error("Failed to create sale - invoice link. Must be corrected manually.", Helper::AppendLoggedin(['Sale' => $sale->uid, 'Invoice ID' => $invoice->id]));
                             }
                         }
+
+                        // update invoice keywords
+                        $this->UpdateInvoiceKeywords($invoice->id);
                     } else {
                         $this->logger->error("Failed to create sale's invoice. Must be corrected manually.", Helper::AppendLoggedin(['Sale' => $sale->uid]));
                         Helper::SetFeedback('error', "Failed to create sale's invoice. Must be corrected manually.");
@@ -2375,6 +2360,9 @@ class PosController extends AbstractController
 
                     if (!$invoice->Save()) {
                         $this->logger->error("Payments were saved, But failed to update sale's invoice..", Helper::AppendLoggedin(['Sale ID' => $id]));
+                    } else {
+                        // update invoice keywords
+                        $this->UpdateInvoiceKeywords($invoice->id);
                     }
 
 

@@ -6,9 +6,11 @@
         reactToPaste: true, // Compatibility to built-in scanners in paste-mode (as opposed to keyboard-mode)
         onScan: function(sCode, iQty) { // Alternative to document.addEventListener('scan')
             console.log('Scanned: ' + iQty + 'x ' + sCode);
+            alert('Scanned: ' + iQty + 'x ' + sCode);
         },
         onKeyDetect: function(iKeyCode){ // output all potentially relevant key events - great for debugging!
             console.log('Pressed: ' + iKeyCode);
+            // alert('Pressed: ' + iKeyCode);
         }
     });
 </script>
@@ -216,7 +218,7 @@
                         <span class="cr-button__content"><i class="fa fa-clipboard-list"></i></span>
                         <span class="cr-button__content">Save as Quote</span>
                     </button>
-                    <button id="cancelButton" class="cr-button cr-button--large" type="submit" name="cancel">
+                    <button id="cancelButton" class="cr-button cr-button--large" type="button" name="cancel">
                         <span class="cr-button__content">Cancel Sale</span>
                     </button>
                 </div>

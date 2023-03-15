@@ -4,6 +4,7 @@
 namespace Framework\controllers;
 
 use Framework\Lib\AbstractController;
+use Framework\lib\AbstractModel;
 use Framework\lib\Cipher;
 use Framework\lib\FilterInput;
 use Framework\lib\Helper;
@@ -13,6 +14,7 @@ use Framework\lib\Redirect;
 use Framework\lib\Request;
 use Framework\Lib\Session;
 use Framework\models\CustomersModel;
+use Framework\models\InvoicesModel;
 use Framework\models\jobs\Insurance_companies_emailsModel;
 use Framework\models\jobs\Insurance_companiesModel;
 use Framework\models\jobs\Insurance_reportsModel;
@@ -27,6 +29,7 @@ use Framework\models\jobs\Repair_trackingModel;
 use Framework\models\jobs\RepairsModel;
 use Framework\models\jobs\StagesModel;
 use Framework\models\jobs\TechniciansModel;
+use Framework\models\pos\ItemsModel;
 use Framework\models\quotes\Leader_itemsModel;
 use Framework\models\quotes\Quotes_itemsModel;
 use Framework\models\quotes\QuotesModel;
@@ -1576,6 +1579,25 @@ class AdminController extends AbstractController
     }
     /* End Users Section */
 
+
+    /* Search */
+    public function SearchAction()
+    {
+        if (Request::Check('key', 'get')) {
+            $key = FilterInput::String(Request::Get('key'));
+            if ($key) {
+                // repairs
+                // quotes
+                $this->RenderPos([
+                    'users' => (new UsersModel())->Search($key)->exec(),
+                    'customers' => (new CustomersModel())->Search($key)->exec(),
+                    'items' => (new ItemsModel())->Search($key)->exec(),
+                    'invoices' => (new InvoicesModel())->Search($key)->exec(),
+                ]);
+            }
+        }
+    }
+    /* End Search */
 
     /* Logs Section */
     public function LogsAction()

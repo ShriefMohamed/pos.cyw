@@ -32,6 +32,7 @@ class CustomersModel extends AbstractModel
     public $updated;
     public $status; //archived, active
     public $source; //xero, manual
+    public $search_keywords;
 
     protected static $tableName = 'customers';
     protected static $pk = 'id';
@@ -58,6 +59,7 @@ class CustomersModel extends AbstractModel
         'updated' => self::DATA_TYPE_STR,
         'status' => self::DATA_TYPE_STR,
         'source' => self::DATA_TYPE_STR,
+        'search_keywords' => self::DATA_TYPE_STR
     );
 
     public static function getCustomers($options = '', $shift = false)
@@ -118,32 +120,21 @@ class CustomersModel extends AbstractModel
         return parent::getSQL($sql, '', $shift);
     }
 
-    public static function Search($key)
+
+
+    public static function getCustomerKeywords($user_id)
     {
-        $sql = "SELECT users.*, 
-                    customers.id AS customer_id, customers.companyName, customers.discount_id, customers.address, customers.address2,
-                    customers.city, customers.suburb, customers.zip, customers.website, customers.notes,customers.emailNotifications, 
-                    customers.smsNotifications, customers.created,
-                    discounts.title, discounts.type, discounts.discount
-                FROM customers
-                
-                LEFT JOIN users ON users.id = customers.user_id
-                LEFT JOIN discounts ON customers.discount_id = discounts.id
-                
-                WHERE 
-                    users.firstName LIKE '%$key%' ||
-                    users.lastName LIKE '%$key%' ||
-                    users.email LIKE '%$key%' ||
-                    users.phone LIKE '%$key%' ||
-                    users.phone2 LIKE '%$key%' ||
-                    customers.companyName LIKE '%$key%' ||
-                    customers.city LIKE '%$key%' ||
-                    customers.suburb LIKE '%$key%' ||
-                    customers.zip LIKE '%$key%'
-                    
-                GROUP BY customers.id";
-        return parent::getSQL($sql);
+        $sql = "SELECT users.firstName, users.lastName, users.username, 
+                    users.email, users.phone, users.phone2,
+                    customers.xero_ContactID, customers.companyName, 
+                    customers.address, customers.address2, customers.zip, 
+                    customers.website, customers.notes
+                FROM users
+                LEFT JOIN customers ON users.id = customers.user_id
+                WHERE users.role = 'customer' && users.id = '$user_id'";
+        return parent::getSQL($sql, '', 'assoc');
     }
+
 
 
 
@@ -187,6 +178,36 @@ class CustomersModel extends AbstractModel
                 LEFT JOIN discounts ON customers.discount_id = discounts.id
                 $options";
         $this->_options = $options;
+        return $this;
+    }
+
+
+    public function Search($key, $options = ''): CustomersModel
+    {
+        $search = parent::getColumns(['id'], "search_keywords LIKE '%$key%'");
+        if ($search) {
+            $items = implode(', ', $search);
+
+            $this->_sql = "SELECT users.id,
+                    users.firstName, users.lastName, users.username, users.email, 
+                    users.phone, users.phone2, users.image, users.role,
+                    users.created, users.lastUpdate, users.lastSeen, 
+                    
+                    customers.id AS customer_id, customers.companyName, customers.discount_id, customers.address, customers.address2,
+                    customers.city, customers.suburb, customers.zip, customers.website, customers.notes, 
+                    customers.emailNotifications, customers.smsNotifications,
+       
+                    discounts.title, discounts.type, discounts.discount
+                FROM customers
+                
+                LEFT JOIN users ON users.id = customers.user_id
+                LEFT JOIN discounts ON customers.discount_id = discounts.id
+
+                WHERE customers.id IN ($items) && users.role = 'customer'
+                $options
+                GROUP BY customers.id";
+            $this->_options = $options;
+        }
         return $this;
     }
 

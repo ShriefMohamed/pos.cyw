@@ -31,7 +31,7 @@ class LoginController extends AbstractController
             $authenticate = UsersModel::Authenticate($username, $password);
             if ($authenticate) {
                 unset($authenticate->password);
-                if ($authenticate->twoFA === 1) {
+                if ($authenticate->twoFA == '1') {
                     Session::Set('loggedin_step_1', $authenticate);
                     $this->logger->info('User Login, First Step', array('Username: ' => $authenticate->username));
                     header("location: " . HOST_NAME . 'login/checkpoint/send');
@@ -321,7 +321,7 @@ return $code;
 die();
             $client = new Client();
             $currentTime = new \DateTime(null, new \DateTimeZone("UTC"));
-            $sendRequestBody = json_decode('{ "messages" : [ { "content" : "Your Login Code for Password Vault is: '.$code.' ", "destination" : "'.$phone.'" } ] }',true);
+            $sendRequestBody = json_decode('{ "messages" : [ { "content" : "Your Login Code is: '.$code.' ", "destination" : "'.$phone.'" } ] }',true);
 
             $sendResponse = $client->request('POST', "https://rest.mymobileapi.com/v1/bulkmessages", [
                 'json' => $sendRequestBody,

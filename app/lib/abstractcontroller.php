@@ -3,6 +3,9 @@
 namespace Framework\lib;
 
 
+use Framework\models\CustomersModel;
+use Framework\models\InvoicesModel;
+use Framework\models\pos\ItemsModel;
 use Framework\models\pos\Register_countsModel;
 use Framework\models\pos\Sales_itemsModel;
 use Framework\models\pos\Sales_paymentsModel;
@@ -286,5 +289,60 @@ class AbstractController
             "";
 
         return Helper::GenerateTemplate('quote-pdf-template', $variables);
+    }
+
+
+    protected function UpdateItemKeywords($item_id)
+    {
+        $get_item_keywords = ItemsModel::getItemKeywords($item_id);
+        $get_item_keywords = $get_item_keywords
+            ? array_filter(
+                array_shift($get_item_keywords),
+                function($value) {
+                    return !is_null($value) && $value !== '';
+                })
+            : [];
+        if ($get_item_keywords) {
+            $item_keywords = new ItemsModel();
+            $item_keywords->id = $item_id;
+            $item_keywords->search_keywords = json_encode($get_item_keywords);
+            $item_keywords->Save();
+        }
+    }
+
+    protected function UpdateCustomerKeywords($user_id, $customer_id)
+    {
+        $get_item_keywords = CustomersModel::getCustomerKeywords($user_id);
+        $get_item_keywords = $get_item_keywords
+            ? array_filter(
+                array_shift($get_item_keywords),
+                function($value) {
+                    return !is_null($value) && $value !== '';
+                })
+            : [];
+        if ($get_item_keywords) {
+            $item_keywords = new CustomersModel();
+            $item_keywords->id = $customer_id;
+            $item_keywords->search_keywords = json_encode($get_item_keywords);
+            $item_keywords->Save();
+        }
+    }
+
+    protected function UpdateInvoiceKeywords($invoice_id)
+    {
+        $get_item_keywords = InvoicesModel::getInvoiceKeywords($invoice_id);
+        $get_item_keywords = $get_item_keywords
+            ? array_filter(
+                array_shift($get_item_keywords),
+                function($value) {
+                    return !is_null($value) && $value !== '';
+                })
+            : [];
+        if ($get_item_keywords) {
+            $item_keywords = new InvoicesModel();
+            $item_keywords->id = $invoice_id;
+            $item_keywords->search_keywords = json_encode($get_item_keywords);
+            $item_keywords->Save();
+        }
     }
 }

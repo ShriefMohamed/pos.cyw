@@ -34,7 +34,7 @@
 
                                         <td class="text-center">
                                             <a href="<?= HOST_NAME.'customers/customer/'.$item->id ?>"><i class="fa fa-edit"></i></a>
-                                            <a href="#" title="Delete" class="delete-btn" data-id="<?= $item->id ?>" data-function="customer"><i class="fa fa-trash"></i></a>
+                                            <a href="#" data-id="<?= $item->id ?>" data-classname="users" data-extra-action="customer_delete" title="Delete" class="ajax-delete"><i class="far fa-trash-alt"></i></a>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>

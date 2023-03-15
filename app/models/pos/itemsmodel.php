@@ -415,13 +415,47 @@ class ItemsModel extends AbstractModel
         return parent::getSQL($sql, '', true);
     }
 
-    public static function Search($key, $options = '')
+
+
+
+
+
+    /* new */
+    public function getItemsAvgPrice($options = ''): ItemsModel
+    {
+        $this->_sql = "SELECT items.*,
+                        
+                    (SELECT SUM(items_inventory.qoh) 
+                     FROM items_inventory
+                     WHERE items_inventory.item_id = items.id && items_inventory.qoh != 0
+                     ) AS available_stock,
+                  
+                    (SELECT AVG(items_inventory.rrp_price)
+                     FROM items_inventory
+                     WHERE items.id = items_inventory.item_id                      
+                    ) AS items_avg_price,
+                    
+                    categories.category AS category_name, 
+                    brands.brand AS brand_name,
+                    tax_classes.class, tax_classes.rate
+                      
+                FROM items
+                    
+                LEFT JOIN categories ON items.category = categories.id
+                LEFT JOIN brands ON items.brand = brands.id
+                LEFT JOIN tax_classes ON items.tax_class = tax_classes.id";
+        $this->_options = $options;
+        return $this;
+    }
+
+
+    public function Search($key, $options = ''): ItemsModel
     {
         $search = parent::getColumns(['id'], "search_keywords LIKE '%$key%'");
         if ($search) {
             $items = implode(', ', $search);
 
-            $sql = "SELECT items.*, items.id AS item_o_id,
+            $this->_sql = "SELECT items.*, items.id AS item_o_id,
                     items_inventory.id AS item_inventory_id, items_inventory.vendor_id, 
                         items_inventory.quantity,
 
@@ -450,39 +484,8 @@ class ItemsModel extends AbstractModel
                 WHERE items.id IN ($items) 
                 $options
                 GROUP BY items.id";
-            return parent::getSQL($sql);
+            $this->_options = $options;
         }
-        return false;
-    }
-
-
-
-
-
-    /* new */
-    public function getItemsAvgPrice($options = ''): ItemsModel
-    {
-        $this->_sql = "SELECT items.*,
-                        
-                    (SELECT SUM(items_inventory.qoh) 
-                     FROM items_inventory
-                     WHERE items_inventory.item_id = items.id && items_inventory.qoh != 0
-                     ) AS available_stock,
-                  
-                    (SELECT AVG(items_inventory.rrp_price)
-                     FROM items_inventory
-                     WHERE items.id = items_inventory.item_id                      
-                    ) AS items_avg_price,
-                    
-                    categories.category AS category_name, brands.brand AS brand_name,
-                    tax_classes.class, tax_classes.rate
-                      
-                FROM items
-                    
-                LEFT JOIN categories ON items.category = categories.id
-                LEFT JOIN brands ON items.brand = brands.id
-                LEFT JOIN tax_classes ON items.tax_class = tax_classes.id";
-        $this->_options = $options;
         return $this;
     }
 }

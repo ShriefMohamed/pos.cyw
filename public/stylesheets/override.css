@@ -16,3 +16,10 @@
 .pagination-per_page_control select {height: 35px !important}
 
 .g-datatable {white-space: nowrap !important}
+
+.lines table thead th.th-money, .lines table tr.thead th.th-money {
+    text-align: center;
+}
+.lines table tbody td.money, .lines table tbody td.number, .lines table tbody td.popdisplay_price.money, .lines table tbody td.popdisplay_subtotal.money, .lines table tbody td.popdisplay_total.money {
+    text-align: center;
+}

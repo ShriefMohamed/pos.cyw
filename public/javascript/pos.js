@@ -4,6 +4,10 @@ var $current_param = window.location.pathname.split('/')[3];
 
 /*Sale*/
 $(document).ready(function () {
+    $('#cancelButton').on('click', function () {
+        document.location.pathname = 'pos/sales';
+    });
+
     $('#add_search_item_text').on('keypress',function(e) {
         if(e.which == 13) {
             e.preventDefault();

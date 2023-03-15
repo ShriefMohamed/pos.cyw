@@ -77,6 +77,7 @@
     <!-- BEGIN PLUGINS STYLES -->
     <link rel="stylesheet" href="<?= VENDOR_DIR ?>flatpickr/flatpickr.min.css">
     <link rel="stylesheet" href="<?= VENDOR_DIR ?>select2/css/select2.min.css">
+    <link rel="stylesheet" href="<?= VENDOR_DIR ?>sweetalert/sweetalert2.min.css">
     <link rel="stylesheet" href="<?= VENDOR_DIR ?>jquery.datetimepicker/jquery.datetimepicker.min.css">
 
     <link rel="stylesheet" href="<?= VENDOR_DIR ?>DataTables/datatables.min.css">

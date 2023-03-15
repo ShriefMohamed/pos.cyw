@@ -11,7 +11,6 @@ use Framework\lib\Helper;
 use Framework\lib\LoggerModel;
 use Framework\lib\Redirect;
 use Framework\lib\Request;
-use Framework\Lib\Session;
 use Framework\models\CustomersModel;
 use Framework\models\InvoicesModel;
 use Framework\models\licenses\Digital_licenses_assignModel;
@@ -50,7 +49,7 @@ class CustomersController extends AbstractController
                 $customer_sales_items = SalesModel::getCustomerSalesItems($customer->customer_id);
 
                 $logs_stream = LoggerModel::getLogStream($id, 'customers');
-                $logs = (file_exists($logs_stream)) ? file_get_contents($logs_stream) : null;
+                $logs = (file_exists($logs_stream)) ? file_get_contents($logs_stream) : [];
                 $logs = array_reverse(explode('*', $logs));
 
                 $totals = array();
@@ -119,6 +118,10 @@ class CustomersController extends AbstractController
                 $customer->smsNotifications = Request::Check('smsNotification') ? 1 : 2;
 
                 if ($customer->Save()) {
+                    // update customer keywords
+                    $this->UpdateCustomerKeywords($user->id, $customer->id);
+
+
                     Helper::SetFeedback('success', "Customer was created successfully.");
                     $this->logger->info("New customer was created", Helper::AppendLoggedin(['Customer: ' => $user->firstName.' '.$user->lastName]));
                     LoggerModel::Instance($user->id, 'customers')
@@ -176,6 +179,9 @@ class CustomersController extends AbstractController
                     $customer->smsNotifications = Request::Check('smsNotification') ? 1 : 2;
 
                     if ($customer->Save()) {
+                        // update customer keywords
+                        $this->UpdateCustomerKeywords($user->id, $customer->id);
+
                         Helper::SetFeedback('success', "Customer was updated successfully.");
 
                         $this->logger->info("Customer was updated", Helper::AppendLoggedin(['Customer: ' => $user->firstName . ' ' . $user->lastName]));

@@ -24,6 +24,12 @@ class AbstractModel
         $this->logger = LoggerModel::Instance('database')->InitializeLogger();
     }
 
+
+    public static function Instance()
+    {
+        return new static;
+    }
+
     ##### BuildSQLstring ##########
 	// Parameters :- None
 	// Return :- SQL Query
@@ -301,8 +307,9 @@ class AbstractModel
             : 10;
         $_total = self::Count($options);
 
-
-        $this->_sql = $this->_sql . " LIMIT " . ( ( $_page - 1 ) * $_per_page ) . ", " . $_per_page;
+        $this->_sql = isset($this->_sql) && $this->_sql
+            ? $this->_sql . " LIMIT " . ( ( $_page - 1 ) * $_per_page ) . ", " . $_per_page
+            : '';
         $results = $this->exec();
 
 
@@ -314,7 +321,7 @@ class AbstractModel
     }
 
 
-    private function exec($type = false)
+    public function exec($type = false)
     {
         if ($this->_sql) {
             $stmt = self::$db->prepare($this->_sql);

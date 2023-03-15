@@ -117,7 +117,7 @@
                                 <th>Tax</th>
                                 <th style="width: 5%">Available QTY</th>
                                 <th style="width: 5%;">AVG Retail Price</th>
-                                <th>Actions</th>
+                                <th></th>
                             </tr>
                             </thead>
                             <tbody>

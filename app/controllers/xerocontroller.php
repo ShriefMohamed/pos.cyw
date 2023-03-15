@@ -8,6 +8,7 @@ use Framework\Lib\AbstractController;
 use Framework\lib\AbstractModel;
 use Framework\lib\FilterInput;
 use Framework\lib\Helper;
+use Framework\lib\LoggerModel;
 use Framework\lib\Redirect;
 use Framework\Lib\Session;
 use Framework\lib\storageclass;
@@ -121,38 +122,18 @@ class XeroController extends AbstractController
 
 
             // Get customers from xero and create/update db
-            $is_next_page = true;
-            $i = 1;
-            while ($is_next_page) {
-                $existing_customers = CustomersModel::getCustomerColumns("users.id, customers.id AS customer_id, customers.xero_ContactID, customers.companyName, CONCAT(users.firstName,' ', users.lastName) AS fullname, users.email", '1', 'assoc');
-                $existing_customers = $existing_customers ?: [];
-
+            $pages_counter = 1;
+            while ($pages_counter != false) {
                 try {
-                    $if_modified_since = $last_successful_customers_sync ? new \DateTime($last_successful_customers_sync->created."+10:30") : '';
+                    $if_modified_since = $last_successful_customers_sync ? new \DateTime($last_successful_customers_sync->created."+10:30") : null;
                     $where = 'isCustomer=true';
-//                    $results = $apiInstance->getContacts($xeroTenantId, $if_modified_since, $where, null, null, null, null, null, $i);
-                    $results = $apiInstance->getContacts($xeroTenantId, null, $where, null, null, null, null, null, null);
-
+                    $results = $apiInstance->getContacts($xeroTenantId, $if_modified_since, $where, null, null, $pages_counter);
                     if (count($results) > 0) {
-                        $i++;
+                        $pages_counter++;
                         $log_sync_result = 'success';
 
                         foreach ($results as $contact) {
-                            // search current customers by contact_id and name, if exists in the system then update, else create.
-                            $search_array_index = false;
-                            if ($existing_customers) {
-                                $array_search_id = array_search($contact['contact_id'], array_column($existing_customers, 'xero_ContactID'));
-                                $array_search_name = array_search($contact['first_name'].' '.$contact['last_name'], array_column($existing_customers, 'fullname'));
-                                $array_search_email = array_search($contact['email_address'], array_column($existing_customers, 'email'));
-                                $array_search_companyName = array_search($contact['name'], array_column($existing_customers, 'companyName'));
-
-                                $search_array_index = Helper::ReturnOnlyNonFalse([$array_search_id, $array_search_name, $array_search_email, $array_search_companyName]);
-                            }
-
                             $user = new UsersModel();
-                            if ($search_array_index !== false && isset($existing_customers[$search_array_index]['id'])) {
-                                $user->id = $existing_customers[$search_array_index]['id'];
-                            }
                             $user->role = 'customer';
                             $user->firstName = $contact['first_name'];
                             $user->lastName = $contact['last_name'];
@@ -169,13 +150,39 @@ class XeroController extends AbstractController
                             $user->lastUpdate = date('Y-m-d H:i:s');
 
 
+                            /*search current customers by contact_id and name, if exists in the system then update, else create.*/
+                            $where_existing_customer = $user->firstName && $user->lastName && strlen($user->firstName) > 3 && strlen($user->lastName) > 3
+                                ? "(users.firstName LIKE '%".FilterInput::CleanString($user->firstName)."%' && 
+                                    users.lastName LIKE '%".FilterInput::CleanString($user->lastName)."%') || "
+                                : "";
+                            $where_existing_customer .= $user->phone && strlen($user->phone) > 3 ? "users.phone = '".FilterInput::Int($user->phone)."' || " : "";
+                            $where_existing_customer .= $user->phone2 && strlen($user->phone2) > 3 ? "users.phone2 = '".FilterInput::Int($user->phone2)."' || " : "";
+                            $where_existing_customer .= $contact['name'] && strlen($contact['name']) > 3 ? "customers.companyName LIKE '%".FilterInput::CleanString($contact['name'])."%' || " : "";
+                            $where_existing_customer .= "customers.xero_ContactID = '".FilterInput::CleanString($contact['contact_id'])."'";
+
+                            $customer_exists = CustomersModel::getCustomerColumns("users.id, customers.id AS customer_id, customers.xero_ContactID", $where_existing_customer, true);
+                            if ($customer_exists) {
+                                $user->id = $customer_exists->id;
+//                                LoggerModel::Instance('duplicate_customer')
+//                                    ->InitializeLogger()
+//                                    ->info("Duplicate Customer", ['Existing Customer Xero ID' => $customer_exists->xero_ContactID, 'Duplicate Customer Xero ID' => $contact['contact_id']]);
+                            }
+
+
+//    echo $where_existing_customer;
+//    echo "<br><br>";
+//    var_dump($contact);
+//    echo "<br><br>";
+//    var_dump($customer_exists);
+//    die();
+
                             if ($user->Save()) {
                                 array_push($contacts_pull_results['successful'], $contact['contact_id']);
 
                                 $customer = new CustomersModel();
-                                if ($search_array_index !== false && isset($existing_customers[$search_array_index]['customer_id'])) {
-                                    $customer->id = $existing_customers[$search_array_index]['customer_id'];
-                                    $customer->xero_ContactID = $existing_customers[$search_array_index]['xero_ContactID'];
+                                if ($customer_exists && $customer_exists->customer_id) {
+                                    $customer->id = $customer_exists->customer_id;
+                                    $customer->xero_ContactID = $customer_exists->xero_ContactID;
                                 } else {
                                     $customer->source = 'xero';
                                     $customer->xero_ContactID = $contact['contact_id'];
@@ -203,13 +210,15 @@ class XeroController extends AbstractController
 
                                 if (!$customer->Save()) {
                                     $this->logger->error("User was created/updated, but failed to create/update customer in the website. check database logs!", Helper::AppendLoggedin(['Customer' => $customer->companyName, 'Contact ID' => $customer->xero_ContactID]));
+                                } else {
+                                    $this->UpdateCustomerKeywords($user->id, $customer->id);
                                 }
                             } else {
                                 array_push($contacts_pull_results['failed'], $contact['contact_id']);
                             }
                         }
                     } else {
-                        $is_next_page = false;
+                        $pages_counter = false;
                     }
                 } catch (\Exception $e) {
                     if ($e->getCode() == 429) {
@@ -218,6 +227,7 @@ class XeroController extends AbstractController
                     }
 
                     $this->logger->error('Exception when calling AccountingApi->getContacts: '. $e->getMessage());
+                    break;
                 }
             }
 
@@ -337,7 +347,7 @@ die();
 
             try {
                 $last_successful_accounts_sync = Xero_sync_logsModel::getLastSuccessfulSync('accounts');
-                $if_modified_since = $last_successful_accounts_sync ? new \DateTime($last_successful_accounts_sync->created."+10:30") : '';
+                $if_modified_since = $last_successful_accounts_sync ? new \DateTime($last_successful_accounts_sync->created."+10:30") : null;
 
                 $results = $apiInstance->getAccounts($xeroTenantId, $if_modified_since);
                 if (!empty($results)) {
@@ -395,131 +405,121 @@ die();
 
 
             // get items from xero to update database
-            for ($i = 1; $i <= 10; $i++) {
-                try {
-                    $if_modified_since = $last_successful_items_sync ? new \DateTime($last_successful_items_sync->created."+10:30") : '';
-                    $results = $apiInstance->getItems($xeroTenantId, $if_modified_since, null, null, null, null, null, null, $i);
+            try {
+                $if_modified_since = $last_successful_items_sync ? new \DateTime($last_successful_items_sync->created."+10:30") : null;
+                $results = $apiInstance->getItems($xeroTenantId, $if_modified_since);
 
-                    if (count($results) > 0) {
-                        $log_sync_result = 'success';
+                if (count($results) > 0) {
+                    $log_sync_result = 'success';
 
-                        foreach ($results as $result) {
-                            // search current items by item_id and name, if exists in the system then update, else create.
-                            $search_array_index = false;
-                            if ($existing_items) {
-                                $array_search_id = array_search($result['item_id'], array_column($existing_items, 'xero_ItemID'));
-                                $array_search_code = array_search($result['code'], array_column($existing_items, 'shop_sku'));
-                                $array_search_xeroID = array_search($result['item_id'], array_column($existing_items, 'xero_ItemID'));
-                                if ($array_search_id !== false ||
-                                    $array_search_code !== false ||
-                                    $array_search_xeroID !== false
-                                ) {
-                                    if ($array_search_id !== false) {
-                                        $search_array_index = $array_search_id;
-                                    } else if ($array_search_code !== false) {
-                                        $search_array_index = $array_search_code;
-                                    } else if ($array_search_xeroID !== false) {
-                                        $search_array_index = $array_search_xeroID;
-                                    }
+                    foreach ($results as $result) {
+                        // search current items by item_id and name, if exists in the system then update, else create.
+                        $search_array_index = false;
+                        if ($existing_items) {
+                            $array_search_id = array_search($result['item_id'], array_column($existing_items, 'xero_ItemID'));
+                            $array_search_code = array_search($result['code'], array_column($existing_items, 'shop_sku'));
+                            $array_search_xeroID = array_search($result['item_id'], array_column($existing_items, 'xero_ItemID'));
+                            if ($array_search_id !== false ||
+                                $array_search_code !== false ||
+                                $array_search_xeroID !== false
+                            ) {
+                                if ($array_search_id !== false) {
+                                    $search_array_index = $array_search_id;
+                                } else if ($array_search_code !== false) {
+                                    $search_array_index = $array_search_code;
+                                } else if ($array_search_xeroID !== false) {
+                                    $search_array_index = $array_search_xeroID;
                                 }
-                            }
-
-                            $item = new ItemsModel();
-                            if ($search_array_index !== false && isset($existing_items[$search_array_index]['id'])) {
-                                $item->id = $existing_items[$search_array_index]['id'];
-                            } else {
-                                $item->source = 'xero';
-                            }
-                            $item->xero_ItemID = $result['item_id'];
-                            $item->item = $result['name'] ?: $result['code'];
-                            $item->description = $result['description'];
-                            $item->shop_sku = $result['code'] ? FilterInput::CleanString($result['code']) : '';
-                            $item->is_tracked_as_inventory = $result['is_tracked_as_inventory'] == true ? 1 : 2;
-
-                            $item->buy_price = $result['purchase_details']['unit_price'] ?
-                                FilterInput::Float($result['purchase_details']['unit_price']) :
-                                0;
-                            $item->rrp_price = $result['sales_details']['unit_price'] ?
-                                FilterInput::Float($result['sales_details']['unit_price']) :
-                                0;
-                            if ($item->buy_price > 0 && $item->rrp_price > 0) {
-                                $item->rrp_percentage = substr(((($item->rrp_price - $item->buy_price) / $item->buy_price) * 100), 0, 3);
-                            }
-
-
-                            $gst_tax = Tax_classesModel::getColumns(['id'], "class LIKE '%GST%'", true);
-                            if ($gst_tax) {
-                                $item->tax_class = $gst_tax;
-                            }
-
-
-                            $uid = substr($item->item, 0, 3);
-                            $uq_number = ItemsModel::generateUniqueNumber();
-                            $item->uid = strtoupper($uid) . $uq_number;
-
-                            $upc_code = 425667 . sprintf("%05d", ItemsModel::NextID());
-                            $item->upc = $upc_code . Helper::CalculateUpcCheckDigit($upc_code);
-
-                            $item->updated = date('Y-m-d H:i:s');
-                            if ($item->Save()) {
-                                array_push($items_pull_results['successful'], $result['code']);
-
-                                // get the formatted database item ID
-                                $item_id = ItemsModel::getColumns(['id'], "id = '$item->id'", true);
-
-
-                                // update item keywords
-                                $get_item_keywords = ItemsModel::getItemKeywords($item_id);
-                                $get_item_keywords = $get_item_keywords ? array_filter(array_shift($get_item_keywords), function($value) {return !is_null($value) && $value !== '';}) : [];
-                                if ($get_item_keywords) {
-                                    $item_keywords = new ItemsModel();
-                                    $item_keywords->id = $item_id;
-                                    $item_keywords->search_keywords = json_encode($get_item_keywords);
-                                    $item_keywords->Save();
-                                }
-
-
-                                // create xero accounts record
-                                $item_xero_accounts = new Item_xero_accountsModel();
-                                $item_xero_accounts->item_id = $item_id;
-                                $item_xero_accounts->item_uid = $item->uid;
-                                if ($result['inventory_asset_account_code']) {
-                                    $item_xero_accounts->inventory_asset_xero_account_code = $result['inventory_asset_account_code'];
-                                    if ($item_xero_accounts->inventory_asset_xero_account_code) {
-                                        $item_xero_accounts->inventory_asset_xero_account_id = Xero_accountsModel::getColumns(['id'], "Code = '$item_xero_accounts->inventory_asset_xero_account_code'", true);
-                                    }
-                                }
-                                if ($result['purchase_details']) {
-                                    if ($result['purchase_details']['cogs_account_code'] || $result['purchase_details']['account_code']) {
-                                        $item_xero_accounts->purchase_xero_account_code = $result['purchase_details']['cogs_account_code'] ?: $result['purchase_details']['account_code'];
-                                        if ($item_xero_accounts->purchase_xero_account_code) {
-                                            $item_xero_accounts->purchase_xero_account_id = Xero_accountsModel::getColumns(['id'], "Code = '$item_xero_accounts->purchase_xero_account_code'", true);
-                                        }
-                                    }
-                                }
-                                if ($result['sales_details']) {
-                                    $item_xero_accounts->sales_xero_account_code = $result['sales_details']['account_code'];
-                                    if ($item_xero_accounts->sales_xero_account_code) {
-                                        $item_xero_accounts->sales_xero_account_id = Xero_accountsModel::getColumns(['id'], "Code = '$item_xero_accounts->sales_xero_account_code'", true);
-                                    }
-                                }
-                                $item_xero_accounts->Save();
-                            } else {
-                                array_push($items_pull_results['failed'], $result['code']);
                             }
                         }
-                    } else {
-                        break;
-                    }
-                } catch (\Exception $e) {
-                    if ($e->getCode() == 429) {
-                        Helper::SetFeedback('error',  "[429] Client error: Too Many Requests, API maxed out, Please try again later!");
-                        Redirect::To('xero/items');
-                    }
 
-                    $this->logger->error('Exception when calling AccountingApi->getItems: '. $e->getMessage());
+                        $item = new ItemsModel();
+                        if ($search_array_index !== false && isset($existing_items[$search_array_index]['id'])) {
+                            $item->id = $existing_items[$search_array_index]['id'];
+                        } else {
+                            $item->source = 'xero';
+                        }
+                        $item->xero_ItemID = $result['item_id'];
+                        $item->item = $result['name'] ?: $result['code'];
+                        $item->description = $result['description'];
+                        $item->shop_sku = $result['code'] ? FilterInput::CleanString($result['code']) : '';
+                        $item->is_tracked_as_inventory = $result['is_tracked_as_inventory'] == true ? 1 : 2;
+
+                        $item->buy_price = $result['purchase_details']['unit_price'] ?
+                            FilterInput::Float($result['purchase_details']['unit_price']) :
+                            0;
+                        $item->rrp_price = $result['sales_details']['unit_price'] ?
+                            FilterInput::Float($result['sales_details']['unit_price']) :
+                            0;
+                        if ($item->buy_price > 0 && $item->rrp_price > 0) {
+                            $item->rrp_percentage = substr(((($item->rrp_price - $item->buy_price) / $item->buy_price) * 100), 0, 3);
+                        }
+
+
+                        $gst_tax = Tax_classesModel::getColumns(['id'], "class LIKE '%GST%'", true);
+                        if ($gst_tax) {
+                            $item->tax_class = $gst_tax;
+                        }
+
+
+                        $uid = substr($item->item, 0, 3);
+                        $uq_number = ItemsModel::generateUniqueNumber();
+                        $item->uid = strtoupper($uid) . $uq_number;
+
+                        $upc_code = 425667 . sprintf("%05d", ItemsModel::NextID());
+                        $item->upc = $upc_code . Helper::CalculateUpcCheckDigit($upc_code);
+
+                        $item->updated = date('Y-m-d H:i:s');
+                        if ($item->Save()) {
+                            array_push($items_pull_results['successful'], $result['code']);
+
+                            // get the formatted database item ID
+                            $item_id = ItemsModel::getColumns(['id'], "id = '$item->id'", true);
+
+
+                            // update item keywords
+                            $this->UpdateItemKeywords($item_id);
+
+
+                            // create xero accounts record
+                            $item_xero_accounts = new Item_xero_accountsModel();
+                            $item_xero_accounts->item_id = $item_id;
+                            $item_xero_accounts->item_uid = $item->uid;
+                            if ($result['inventory_asset_account_code']) {
+                                $item_xero_accounts->inventory_asset_xero_account_code = $result['inventory_asset_account_code'];
+                                if ($item_xero_accounts->inventory_asset_xero_account_code) {
+                                    $item_xero_accounts->inventory_asset_xero_account_id = Xero_accountsModel::getColumns(['id'], "Code = '$item_xero_accounts->inventory_asset_xero_account_code'", true);
+                                }
+                            }
+                            if ($result['purchase_details']) {
+                                if ($result['purchase_details']['cogs_account_code'] || $result['purchase_details']['account_code']) {
+                                    $item_xero_accounts->purchase_xero_account_code = $result['purchase_details']['cogs_account_code'] ?: $result['purchase_details']['account_code'];
+                                    if ($item_xero_accounts->purchase_xero_account_code) {
+                                        $item_xero_accounts->purchase_xero_account_id = Xero_accountsModel::getColumns(['id'], "Code = '$item_xero_accounts->purchase_xero_account_code'", true);
+                                    }
+                                }
+                            }
+                            if ($result['sales_details']) {
+                                $item_xero_accounts->sales_xero_account_code = $result['sales_details']['account_code'];
+                                if ($item_xero_accounts->sales_xero_account_code) {
+                                    $item_xero_accounts->sales_xero_account_id = Xero_accountsModel::getColumns(['id'], "Code = '$item_xero_accounts->sales_xero_account_code'", true);
+                                }
+                            }
+                            $item_xero_accounts->Save();
+                        } else {
+                            array_push($items_pull_results['failed'], $result['code']);
+                        }
+                    }
                 }
+            } catch (\Exception $e) {
+                if ($e->getCode() == 429) {
+                    Helper::SetFeedback('error',  "[429] Client error: Too Many Requests, API maxed out, Please try again later!");
+                    Redirect::To('xero/items');
+                }
+
+                $this->logger->error('Exception when calling AccountingApi->getItems: '. $e->getMessage());
             }
+
 
 
             /*-----------------------------------------------------------*/
@@ -627,7 +627,7 @@ die();
             $last_successful_invoices_sync = Xero_sync_logsModel::getLastSuccessfulSync('invoices');
 
 
-            $existing_customers = CustomersModel::getCustomerColumns("customers.id AS customer_id, customers.xero_ContactID", '1', 'assoc');
+            $existing_customers = CustomersModel::getCustomerColumns("users.id, customers.id AS customer_id, customers.xero_ContactID", '1', 'assoc');
             $existing_customers = $existing_customers ?: [];
 
             $invoices_to_push_modified_since = $last_successful_invoices_sync ? " (invoices.created > '$last_successful_invoices_sync->created' || invoices.updated > '$last_successful_invoices_sync->created') && " : '';
@@ -640,14 +640,16 @@ die();
 
 
             // Get invoices from xero and create/update db
-            $if_modified_since = $last_successful_invoices_sync ? new \DateTime($last_successful_invoices_sync->created."+10:30") : '';
-            for ($i = 1; $i <= 10; $i++) {
+            $if_modified_since = $last_successful_invoices_sync ? new \DateTime($last_successful_invoices_sync->created."+10:30") : null;
+            $pages_counter = 1;
+            while ($pages_counter != false) {
                 $existing_invoices = InvoicesModel::getColumns(['id', 'reference']);
                 $existing_invoices = $existing_invoices ?: [];
 
                 try {
-                    $results = $apiInstance->getInvoices($xeroTenantId, $if_modified_since, null, null, null, null, null, null, $i);
+                    $results = $apiInstance->getInvoices($xeroTenantId, $if_modified_since, null, null, null, null, null, null, $pages_counter);
                     if (count($results) > 0) {
+                        $pages_counter++;
                         $log_sync_result = 'success';
 
                         foreach ($results as $result) {
@@ -681,10 +683,13 @@ die();
 
                             $array_search_customers_by_contactID = array_search($result['contact']['contact_id'], array_column($existing_customers, 'xero_ContactID'));
                             if ($existing_customers && $array_search_customers_by_contactID !== false) {
-                                $invoice->customer_id = $existing_customers[$array_search_customers_by_contactID]['customer_id'];
+                                $invoice->customer_id = $existing_customers[$array_search_customers_by_contactID]['id'];
                             }
 
                             if ($invoice->Save()) {
+                                // update invoice keywords
+                                $this->UpdateInvoiceKeywords($invoice->id);
+
                                 if (isset($result['line_items']) && !empty($result['line_items'])) {
                                     foreach ($result['line_items'] as $line_item) {
                                         $invoice_line = new Invoice_linesModel();
@@ -711,7 +716,7 @@ die();
                             }
                         }
                     } else {
-                        break;
+                        $pages_counter = false;
                     }
                 } catch (\Exception $e) {
                     if ($e->getCode() == 429) {
@@ -720,6 +725,7 @@ die();
                     }
 
                     $this->logger->error('Exception when calling AccountingApi->getInvoices: ' . $e->getMessage());
+                    break;
                 }
             }
 
@@ -828,6 +834,9 @@ die();
                                     $invoice_update->xero_InvoiceID = $inv_xeroID;
                                     $invoice_update->xero_InvoiceNumber = $inv_number;
                                     if ($invoice_update->Save()) {
+                                        // update invoice keywords
+                                        $this->UpdateInvoiceKeywords($invoice_update->id);
+
                                         array_push($invoices_push_results['successful'], $inv_xeroID);
                                     } else {
                                         array_push($invoices_push_results['failed'], $inv_xeroID);
@@ -946,7 +955,7 @@ die();
             $log_sync = new Xero_sync_logsModel();
             $log_sync->type = 'invoices';
             $log_sync->result = $log_sync_result;
-            $log_sync->Save();
+//            $log_sync->Save();
         }
     }
 

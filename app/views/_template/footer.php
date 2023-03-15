@@ -38,6 +38,7 @@
 <script src="<?= VENDOR_DIR ?>flatpickr/flatpickr.min.js"></script>
 <script src="<?= VENDOR_DIR ?>particles.js/particles.min.js"></script>
 <script src="<?= VENDOR_DIR ?>select2/js/select2.min.js"></script>
+<script src="<?= VENDOR_DIR ?>sweetalert/sweetalert.min.js"></script>
 <script src="<?= VENDOR_DIR ?>jquery-query-object/jquery.query-object.js"></script>
 
 <!-- BEGIN THEME JS -->
@@ -133,23 +134,32 @@
             var id = $this.data('id');
             var action = $this.data('function');
 
-            $.ajax({
-                type: "POST",
-                url: "/ajax/"+action+"_delete/" + id,
-                data: '',
-                dataType: 'json',
-                beforeSend: function () {
-                    Pace.restart();
-                },
-                success: function (data) {
-                    if (data.status == '1') {
-                        $this.closest('.gradeX').remove();
-                    } else {
-                        showFeedback('error', data.msg);
-                    }
-                },
-                fail: function (err) {
-                    showFeedback('error', err.responseText);
+            swal({
+                    title: "Are you sure you want to delete?",
+                    text: "Warning! This action is permanent and can't be undone.",
+                    buttons: ["Cancel", "Confirm"],
+                }
+            ).then((value) => {
+                if (value === true) {
+                    $.ajax({
+                        type: "POST",
+                        url: "/ajax/"+action+"_delete/" + id,
+                        data: '',
+                        dataType: 'json',
+                        beforeSend: function () {
+                            Pace.restart();
+                        },
+                        success: function (data) {
+                            if (data.status == '1') {
+                                $this.closest('.gradeX').remove();
+                            } else {
+                                showFeedback('error', data.msg);
+                            }
+                        },
+                        fail: function (err) {
+                            showFeedback('error', err.responseText);
+                        }
+                    });
                 }
             });
         });
@@ -158,30 +168,39 @@
             e.preventDefault();
             var $this = $(this);
             var id = $this.data('id');
-            var action = $this.data('classname');
+            var classname = $this.data('classname');
             var extra_action = $this.data('extra-action');
 
-            $.ajax({
-                type: "POST",
-                url: "/ajax/delete/"+id,
-                data: {target: action, extra_action: extra_action},
-                dataType: 'json',
-                beforeSend: function () {
-                    Pace.restart();
-                },
-                complete: function (xhr) {
-                    if (xhr.responseJSON) {
-                        if (xhr.responseJSON.status === 1) {
-                            $this.closest('.gradeX').remove();
-                        } else {
-                            showFeedback('error', xhr.responseJSON.msg);
+            swal({
+                    title: "Are you sure you want to delete?",
+                    text: "Warning! This action is permanent and can't be undone.",
+                    buttons: ["Cancel", "Confirm"],
+                }
+            ).then((value) => {
+                if (value === true) {
+                    $.ajax({
+                        type: "POST",
+                        url: "/ajax/delete/"+id,
+                        data: {target: classname, extra_action: extra_action},
+                        dataType: 'json',
+                        beforeSend: function () {
+                            Pace.restart();
+                        },
+                        complete: function (xhr) {
+                            if (xhr.responseJSON) {
+                                if (xhr.responseJSON.status === 1) {
+                                    $this.closest('.gradeX').remove();
+                                } else {
+                                    showFeedback('error', xhr.responseJSON.msg);
+                                }
+                            } else {
+                                showFeedback('error', xhr.responseText);
+                            }
+                        },
+                        fail: function (err) {
+                            showFeedback('error', err.responseText);
                         }
-                    } else {
-                        showFeedback('error', xhr.responseText);
-                    }
-                },
-                fail: function (err) {
-                    showFeedback('error', err.responseText);
+                    });
                 }
             });
         });
